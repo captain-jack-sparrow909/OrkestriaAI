@@ -56,6 +56,37 @@ async function upsertVariable(variableId, key, value, secret) {
   return { ...updated, state: "updated" };
 }
 
+async function upsertBucket(bucket) {
+  const body = {
+    bucketId: bucket.id,
+    name: bucket.name,
+    permissions: [],
+    fileSecurity: bucket.fileSecurity,
+    enabled: true,
+    maximumFileSize: bucket.maximumFileSize,
+    allowedFileExtensions: bucket.allowedFileExtensions,
+    compression: "none",
+    encryption: true,
+    antivirus: true,
+  };
+  const created = await request("/storage/buckets", body);
+  if (created.state === "created") return created;
+
+  const update = {
+    name: body.name,
+    permissions: body.permissions,
+    fileSecurity: body.fileSecurity,
+    enabled: body.enabled,
+    maximumFileSize: body.maximumFileSize,
+    allowedFileExtensions: body.allowedFileExtensions,
+    compression: body.compression,
+    encryption: body.encryption,
+    antivirus: body.antivirus,
+  };
+  const updated = await request(`/storage/buckets/${bucket.id}`, update, "PUT");
+  return { ...updated, state: "updated" };
+}
+
 const results = [];
 const databaseId = process.env.APPWRITE_DATABASE_ID || database.id;
 
@@ -89,18 +120,7 @@ for (const bucket of buckets) {
   results.push([
     "bucket",
     bucket.id,
-    await request("/storage/buckets", {
-      bucketId: bucket.id,
-      name: bucket.name,
-      permissions: [],
-      fileSecurity: bucket.fileSecurity,
-      enabled: true,
-      maximumFileSize: bucket.maximumFileSize,
-      allowedFileExtensions: bucket.allowedFileExtensions,
-      compression: "none",
-      encryption: true,
-      antivirus: true,
-    }),
+    await upsertBucket(bucket),
   ]);
 }
 

@@ -202,7 +202,11 @@ export const buckets = [
     name: "Workspace uploads",
     fileSecurity: true,
     maximumFileSize: 50 * 1024 * 1024,
-    allowedFileExtensions: ["pdf", "docx", "txt", "csv", "json", "png", "jpg", "jpeg"],
+    allowedFileExtensions: [
+      "pdf", "docx", "txt", "csv", "json", "log", "yaml", "yml",
+      "tf", "js", "jsx", "ts", "tsx", "py", "go", "java", "rb",
+      "php", "sh", "xml", "toml", "ini", "conf", "png", "jpg", "jpeg",
+    ],
   },
   {
     id: "run-evidence",

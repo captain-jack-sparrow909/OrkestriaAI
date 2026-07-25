@@ -1,7 +1,7 @@
 import { getChatGPTUser } from "../../../chatgpt-auth";
 import {
-  createPhaseTwoPlan,
-  phaseTwoAgents,
+  availableAgents,
+  createAgentPlan,
 } from "../../../lib/platform/repository";
 import type { AgentKey } from "../../../lib/platform/model";
 
@@ -19,15 +19,15 @@ export async function POST(request: Request) {
   const agent = String(body?.agent || "").toLowerCase() as AgentKey;
   const goal = String(body?.goal || "").trim();
 
-  if (!phaseTwoAgents.has(agent) || goal.length < 8 || goal.length > 6000) {
+  if (!availableAgents.has(agent) || goal.length < 8 || goal.length > 6000) {
     return Response.json(
-      { error: "Choose Vela or Loom and provide a clear task." },
+      { error: "Choose an available agent and provide a clear task." },
       { status: 400 },
     );
   }
 
   try {
-    const result = await createPhaseTwoPlan({
+    const result = await createAgentPlan({
       agent,
       goal,
       context: JSON.stringify(body?.context ?? {}).slice(0, 12000),

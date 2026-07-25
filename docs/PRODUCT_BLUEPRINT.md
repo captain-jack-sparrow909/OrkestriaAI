@@ -183,6 +183,13 @@ and secure software delivery.
 Add GitHub/GitLab, CI, cloud, and observability connectors. Reuse the approval
 engine for code changes, rollbacks, and infrastructure remediation.
 
+**Implementation status:** Tempo and Aegis ship as authenticated studios on the
+shared Appwrite orchestrator. Tempo correlates operational evidence into
+findings and reversible remediation sequences. Aegis grounds vulnerabilities
+in supplied code or configuration and produces fix-ready recommendations.
+Both support private evidence uploads with metadata, retention, audit records,
+rate limits, and human approval before consequential changes.
+
 **Next phase:** Helio — add financial intelligence and verified savings to the
 shared operational context.
 

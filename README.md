@@ -62,10 +62,11 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 2 ships Vela Browser Studio and Loom Workflow Studio as protected,
-responsive product surfaces. Both create guarded DeepSeek plans through the
-live Appwrite orchestrator, persist runs and audit events, enforce durable rate
-limits, and create approval records for consequential actions.
+Phase 3 adds Tempo Operations Studio and Aegis Security Studio to Vela and
+Loom. Tempo correlates deployments, alerts, logs, traces, and infrastructure
+changes. Aegis produces evidence-grounded code and configuration findings.
+Both accept durable evidence uploads and route remediation through the shared
+run, audit, rate-limit, and approval controls.
 
-**Next phase:** Tempo + Aegis — engineering operations and secure software
-delivery.
+**Next phase:** Helio — cloud-cost intelligence, anomaly detection, and
+verified savings.

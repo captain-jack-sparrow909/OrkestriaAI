@@ -32,11 +32,19 @@ export type AgentPlanStep = {
   requiresApproval: boolean;
 };
 
+export type AgentFinding = {
+  title: string;
+  severity: "info" | RiskLevel;
+  evidence: string;
+  recommendation: string;
+};
+
 export type AgentPlan = {
   summary: string;
   risk: RiskLevel;
   approvalRequired: boolean;
   rationale: string;
+  findings: AgentFinding[];
   steps: AgentPlanStep[];
 };
 

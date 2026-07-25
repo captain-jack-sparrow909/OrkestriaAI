@@ -58,7 +58,7 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/aegis"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -82,6 +82,24 @@ test("ships the Phase 2 Vela and Loom studios", async () => {
   assert.match(loom, /external messages require approval/);
   assert.match(repository, /enforceAgentPlanRateLimit/);
   assert.match(orchestrator, /x-orkestria-user-id/);
+});
+
+test("ships the Phase 3 Tempo and Aegis studios with evidence uploads", async () => {
+  const [tempo, aegis, uploadRoute, deepseek] = await Promise.all([
+    readFile(new URL("../app/tempo/TempoStudio.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/aegis/AegisStudio.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/files/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/deepseek.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(tempo, /Analyze incident/);
+  assert.match(tempo, /productionPolicy/);
+  assert.match(aegis, /Run security review/);
+  assert.match(aegis, /Review findings/);
+  assert.match(uploadRoute, /maximumAnalysisFileSize/);
+  assert.match(uploadRoute, /workspace-uploads/);
+  assert.match(deepseek, /surface concrete evidence as findings/);
+  assert.match(deepseek, /Do not invent absent code/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

@@ -30,7 +30,12 @@ type FunctionExecution = {
   errors?: string;
 };
 
-export const phaseTwoAgents = new Set<AgentKey>(["vela", "loom"]);
+export const availableAgents = new Set<AgentKey>([
+  "vela",
+  "loom",
+  "tempo",
+  "aegis",
+]);
 
 async function identityHash(value: string) {
   const digest = await crypto.subtle.digest(
@@ -80,7 +85,10 @@ export async function ensureWorkspaceForUser(
         plan: "starter",
         region: "global",
         status: "active",
-        settings: JSON.stringify({ phase: 2, agents: ["vela", "loom"] }),
+        settings: JSON.stringify({
+          phase: 3,
+          agents: ["vela", "loom", "tempo", "aegis"],
+        }),
         createdBy: email.toLowerCase(),
         createdAt: now,
       },
@@ -166,7 +174,7 @@ export async function enforceAgentPlanRateLimit(email: string, limit = 12) {
   return { remaining: Math.max(0, limit - 1), limit };
 }
 
-export async function createPhaseTwoPlan(input: {
+export async function createAgentPlan(input: {
   agent: AgentKey;
   goal: string;
   context: string;
@@ -175,8 +183,8 @@ export async function createPhaseTwoPlan(input: {
 }): Promise<AgentPlanResult | null> {
   const appwrite = getClient();
   if (!appwrite) return null;
-  if (!phaseTwoAgents.has(input.agent)) {
-    throw new Error("This agent is not available in Phase 2.");
+  if (!availableAgents.has(input.agent)) {
+    throw new Error("This agent is not available yet.");
   }
 
   const workspace = await ensureWorkspaceForUser(input.email, input.displayName);
@@ -221,6 +229,42 @@ export async function createPhaseTwoPlan(input: {
   }
 
   return response;
+}
+
+export async function recordWorkspaceFile(input: {
+  workspaceId: string;
+  fileId: string;
+  ownerEmail: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const now = new Date();
+
+  return appwrite.client.request(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.files}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          bucketId: "workspace-uploads",
+          fileId: input.fileId,
+          ownerEmail: input.ownerEmail.toLowerCase(),
+          name: input.name.slice(0, 255),
+          mimeType: input.mimeType.slice(0, 128),
+          size: input.size,
+          scanStatus: "pending",
+          retentionUntil: new Date(now.getTime() + 30 * 86_400_000).toISOString(),
+          createdAt: now.toISOString(),
+        },
+        permissions: [],
+      },
+    },
+  );
 }
 
 export async function findMembership(workspaceId: string, email: string) {

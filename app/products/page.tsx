@@ -49,6 +49,7 @@ const products = [
       ["✓", "Likely cause identified", "92%"],
       ["↶", "Rollback prepared", "Approval"],
     ],
+    href: "/tempo",
   },
   {
     id: "helio",
@@ -79,6 +80,7 @@ const products = [
       ["M", "Outdated dependency", "Medium"],
       ["✓", "Secrets scan", "Clear"],
     ],
+    href: "/aegis",
   },
 ];
 

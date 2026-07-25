@@ -5,9 +5,9 @@ import type { ChatGPTUser } from "../chatgpt-auth";
 const agents = [
   { key: "vela", name: "Vela", mark: "V", color: "violet", href: "/vela", live: true },
   { key: "loom", name: "Loom", mark: "L", color: "lime", href: "/loom", live: true },
-  { key: "tempo", name: "Tempo", mark: "T", color: "orange", href: "#", live: false },
+  { key: "tempo", name: "Tempo", mark: "T", color: "orange", href: "/tempo", live: true },
   { key: "helio", name: "Helio", mark: "H", color: "cyan", href: "#", live: false },
-  { key: "aegis", name: "Aegis", mark: "Æ", color: "pink", href: "#", live: false },
+  { key: "aegis", name: "Aegis", mark: "Æ", color: "pink", href: "/aegis", live: true },
 ] as const;
 
 export function WorkspaceChrome({
@@ -17,7 +17,7 @@ export function WorkspaceChrome({
   children,
 }: {
   user: ChatGPTUser;
-  active: "overview" | "vela" | "loom";
+  active: "overview" | "vela" | "loom" | "tempo" | "aegis";
   title: string;
   children: ReactNode;
 }) {
@@ -37,7 +37,7 @@ export function WorkspaceChrome({
         </Link>
         <div className="workspace-switcher">
           <span className="workspace-avatar">N</span>
-          <span><strong>Northstar Labs</strong><small>Phase 2 workspace</small></span>
+          <span><strong>Northstar Labs</strong><small>Phase 3 workspace</small></span>
           <b>⌄</b>
         </div>
         <nav className="app-nav" aria-label="Workspace">
@@ -80,7 +80,7 @@ export function WorkspaceChrome({
             <strong>{title}</strong>
           </div>
           <div className="topbar-actions">
-            <span className="phase-live"><i />Phase 2 live</span>
+            <span className="phase-live"><i />Phase 3 live</span>
             <div className="user-chip">
               <span>{initials}</span>
               <p><strong>{user.displayName}</strong><small>Owner</small></p>

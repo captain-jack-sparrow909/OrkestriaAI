@@ -88,3 +88,24 @@ test("bounds untrusted model output", () => {
   assert.equal(plan.approvalRequired, true);
   assert.equal(plan.steps.length, 12);
 });
+
+test("normalizes bounded operational and security findings", () => {
+  const plan = validatePlan({
+    summary: "Review supplied evidence",
+    risk: "medium",
+    approvalRequired: false,
+    findings: Array.from({ length: 14 }, (_, index) => ({
+      title: `Finding ${index}`,
+      severity: index === 0 ? "critical" : "unsupported",
+      evidence: "e".repeat(2000),
+      recommendation: "r".repeat(2000),
+    })),
+    steps: [],
+  });
+
+  assert.equal(plan.findings.length, 10);
+  assert.equal(plan.findings[0].severity, "critical");
+  assert.equal(plan.findings[1].severity, "medium");
+  assert.equal(plan.findings[0].evidence.length, 1600);
+  assert.equal(plan.findings[0].recommendation.length, 1600);
+});

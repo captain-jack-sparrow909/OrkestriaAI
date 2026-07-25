@@ -59,7 +59,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "vela-loom",
+      phase: "tempo-aegis",
       requestId,
     });
   }

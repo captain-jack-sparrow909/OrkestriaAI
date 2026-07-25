@@ -1,6 +1,15 @@
 const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions";
 const allowedAgents = new Set(["vela", "loom", "tempo", "helio", "aegis"]);
 const allowedRisks = new Set(["low", "medium", "high", "critical"]);
+const allowedSeverities = new Set(["info", "low", "medium", "high", "critical"]);
+
+const agentInstructions = {
+  vela: "Focus on browser navigation, evidence gathering, domain boundaries, and checkpoints before forms, submissions, purchases, or account changes.",
+  loom: "Focus on triggers, transformations, integrations, retries, idempotency, and human checkpoints before consequential external actions.",
+  tempo: "Correlate deployments, alerts, logs, and infrastructure changes. State uncertainty clearly, surface concrete evidence as findings, and recommend reversible remediation before any production change.",
+  helio: "Focus on cost evidence, utilization, ownership, savings estimates, implementation effort, and operational risk.",
+  aegis: "Review the supplied code or configuration for concrete vulnerabilities and insecure patterns. Put each supported issue in findings with exact evidence and a practical recommendation. Do not invent absent code.",
+};
 
 const systemPrompt = `You are the planning intelligence inside OrkestriaAI, a human-controlled AI operations platform.
 Return one JSON object and nothing else.
@@ -13,6 +22,14 @@ Use this exact JSON shape:
   "risk": "low | medium | high | critical",
   "approvalRequired": true,
   "rationale": "plain-language reasoning",
+  "findings": [
+    {
+      "title": "specific signal or issue",
+      "severity": "info | low | medium | high | critical",
+      "evidence": "short evidence grounded in supplied context",
+      "recommendation": "specific safe next step"
+    }
+  ],
   "steps": [
     {
       "title": "step title",
@@ -29,6 +46,16 @@ export function validatePlan(input) {
   }
 
   const risk = allowedRisks.has(input.risk) ? input.risk : "high";
+  const findings = Array.isArray(input.findings)
+    ? input.findings.slice(0, 10).map((finding, index) => ({
+        title: String(finding?.title || `Finding ${index + 1}`).slice(0, 180),
+        severity: allowedSeverities.has(finding?.severity)
+          ? finding.severity
+          : "medium",
+        evidence: String(finding?.evidence || "").slice(0, 1600),
+        recommendation: String(finding?.recommendation || "").slice(0, 1600),
+      }))
+    : [];
   const steps = Array.isArray(input.steps)
     ? input.steps.slice(0, 12).map((step, index) => ({
         title: String(step?.title || `Step ${index + 1}`).slice(0, 160),
@@ -49,6 +76,7 @@ export function validatePlan(input) {
     risk,
     approvalRequired,
     rationale: String(input.rationale || "The plan was generated from the supplied goal.").slice(0, 4000),
+    findings,
     steps,
   };
 }
@@ -99,7 +127,10 @@ export async function createAgentPlan({ agent, goal, context, userId }) {
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `Create a JSON plan for the ${normalizedAgent} agent.\nGoal: ${safeGoal}\nContext: ${safeContext || "No additional context."}`,
+            content: `Create a JSON plan for the ${normalizedAgent} agent.
+Agent guidance: ${agentInstructions[normalizedAgent]}
+Goal: ${safeGoal}
+Context: ${safeContext || "No additional context."}`,
           },
         ],
       }),
