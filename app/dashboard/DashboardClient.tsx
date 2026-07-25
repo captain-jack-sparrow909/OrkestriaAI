@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ChatGPTUser } from "../chatgpt-auth";
 
 type Foundation = {
@@ -45,6 +45,8 @@ const approvalsSeed = [
   },
 ];
 
+type ApprovalItem = (typeof approvalsSeed)[number];
+
 const runs = [
   ["Tempo", "Investigate checkout latency", "Waiting for approval", "46s", "orange"],
   ["Aegis", "Review pull request #938", "Completed", "2m 18s", "pink"],
@@ -59,7 +61,10 @@ export function DashboardClient({
   user: ChatGPTUser;
   foundation: Foundation;
 }) {
-  const [approvals, setApprovals] = useState(approvalsSeed);
+  const [approvals, setApprovals] = useState<ApprovalItem[]>(
+    foundation.configured ? [] : approvalsSeed,
+  );
+  const [workspaceId, setWorkspaceId] = useState("");
   const [activeSection, setActiveSection] = useState("Overview");
   const [command, setCommand] = useState("");
   const firstName = user.displayName.split(/[\s@]/)[0] || "Operator";
@@ -78,6 +83,65 @@ export function DashboardClient({
     ],
     [foundation.configured],
   );
+
+  useEffect(() => {
+    if (!foundation.configured) return;
+    let active = true;
+
+    fetch("/api/approvals")
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "Unable to load approvals");
+        return payload;
+      })
+      .then((payload) => {
+        if (!active) return;
+        setWorkspaceId(payload.workspaceId);
+        setApprovals(
+          payload.approvals.map((approval: {
+            $id: string;
+            action: string;
+            description: string;
+            risk: string;
+            requestedAt: string;
+          }) => ({
+            id: approval.$id,
+            agent: "Orkestria",
+            mark: "O",
+            action: approval.action,
+            detail: approval.description,
+            risk: `${approval.risk.charAt(0).toUpperCase()}${approval.risk.slice(1)}`,
+            age: new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
+              -Math.max(1, Math.round((Date.now() - new Date(approval.requestedAt).getTime()) / 60_000)),
+              "minute",
+            ),
+            color: "violet",
+          })),
+        );
+      })
+      .catch(() => {
+        if (active) setApprovals([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [foundation.configured]);
+
+  async function decide(id: string, decision: "approved" | "denied") {
+    if (!foundation.configured || !workspaceId) {
+      setApprovals((items) => items.filter((item) => item.id !== id));
+      return;
+    }
+    const response = await fetch("/api/approvals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approvalId: id, workspaceId, decision }),
+    });
+    if (response.ok) {
+      setApprovals((items) => items.filter((item) => item.id !== id));
+    }
+  }
 
   return (
     <main className="app-shell">
@@ -106,13 +170,17 @@ export function DashboardClient({
           ))}
           <span className="app-nav-label">Agents</span>
           {[
-            ["V", "Vela", "violet"],
-            ["L", "Loom", "lime"],
+            ["V", "Vela", "violet", "/vela"],
+            ["L", "Loom", "lime", "/loom"],
+          ].map(([mark, name, color, href]) => (
+            <Link href={href} key={name}><i className={`agent-nav-mark ${color}`}>{mark}</i><span>{name}</span><span className="agent-online" /></Link>
+          ))}
+          {[
             ["T", "Tempo", "orange"],
             ["H", "Helio", "cyan"],
             ["Æ", "Aegis", "pink"],
           ].map(([mark, name, color]) => (
-            <button key={name}><i className={`agent-nav-mark ${color}`}>{mark}</i>{name}<span className="agent-online" /></button>
+            <span className="agent-nav-disabled" key={name}><i className={`agent-nav-mark ${color}`}>{mark}</i><span>{name}</span><small>Soon</small></span>
           ))}
         </nav>
         <div className="sidebar-bottom">
@@ -194,8 +262,8 @@ export function DashboardClient({
                     </div>
                     <span className={`risk-pill ${approval.risk.toLowerCase()}`}>{approval.risk} risk</span>
                     <div className="approval-actions">
-                      <button aria-label={`Deny ${approval.action}`} onClick={() => setApprovals((items) => items.filter((item) => item.id !== approval.id))}>×</button>
-                      <button aria-label={`Approve ${approval.action}`} onClick={() => setApprovals((items) => items.filter((item) => item.id !== approval.id))}>Approve</button>
+                      <button aria-label={`Deny ${approval.action}`} onClick={() => decide(approval.id, "denied")}>×</button>
+                      <button aria-label={`Approve ${approval.action}`} onClick={() => decide(approval.id, "approved")}>Approve</button>
                     </div>
                   </article>
                 ))}

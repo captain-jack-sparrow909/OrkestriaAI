@@ -23,6 +23,37 @@ export const roleCapabilities: Record<WorkspaceRole, readonly string[]> = {
 export type ApprovalState = "pending" | "approved" | "denied" | "expired";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 
+export type AgentKey = "vela" | "loom" | "tempo" | "helio" | "aegis";
+
+export type AgentPlanStep = {
+  title: string;
+  kind: string;
+  description: string;
+  requiresApproval: boolean;
+};
+
+export type AgentPlan = {
+  summary: string;
+  risk: RiskLevel;
+  approvalRequired: boolean;
+  rationale: string;
+  steps: AgentPlanStep[];
+};
+
+export type AgentPlanResult = {
+  run: {
+    $id: string;
+    workspaceId: string;
+    agent: AgentKey;
+    title: string;
+    status: string;
+    risk: RiskLevel;
+  };
+  plan: AgentPlan;
+  approval: ApprovalRecord | null;
+  requestId: string;
+};
+
 export type ApprovalRecord = {
   $id: string;
   workspaceId: string;

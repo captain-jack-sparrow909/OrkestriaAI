@@ -157,8 +157,8 @@ audit writer, idempotent job model, structured Function logs, and provisioning
 automation are implemented. DeepSeek V4 Flash is integrated behind the
 orchestrator as a planning-only intelligence layer; model output is validated,
 bounded, metered, and forced through approval policy before risky execution.
-Connecting and provisioning the live Appwrite project requires its endpoint,
-project ID, and a scoped server API key.
+The Appwrite database, private buckets, Function, and secret runtime variables
+are provisioned in the live project.
 
 **Next phase:** Vela + Loom — deliver the first complete agent and automation
 experiences on top of the shared foundation.
@@ -168,6 +168,12 @@ experiences on top of the shared foundation.
 Launch the browser agent and workflow builder first. Together they prove the
 shared execution engine, connector framework, human approval model, and job
 system.
+
+**Implementation status:** Vela and Loom ship as authenticated studios backed
+by the live Appwrite orchestrator. Natural-language missions become bounded,
+inspectable plans; runs, audit events, approval checkpoints, and ten-minute
+rate-limit windows are durable. The dashboard approval inbox reads and decides
+the live records.
 
 **Next phase:** Tempo + Aegis — extend the platform into engineering operations
 and secure software delivery.

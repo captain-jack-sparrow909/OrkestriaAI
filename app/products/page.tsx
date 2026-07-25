@@ -4,7 +4,7 @@ import { SiteHeader } from "../components/SiteHeader";
 
 const products = [
   {
-    id: "atlas",
+    id: "vela",
     mark: "A",
     kicker: "AUTONOMOUS BROWSER AGENT",
     name: "Vela",
@@ -17,6 +17,7 @@ const products = [
       ["02", "Build comparison model", "Complete"],
       ["!", "Submit procurement brief", "Approval"],
     ],
+    href: "/vela",
   },
   {
     id: "loom",
@@ -32,9 +33,10 @@ const products = [
       ["✦", "Enrich and score company", "AI step"],
       ["S", "Notify account owner", "Action"],
     ],
+    href: "/loom",
   },
   {
-    id: "sentry",
+    id: "tempo",
     mark: "S",
     kicker: "AI DEVOPS ASSISTANT",
     name: "Tempo",
@@ -116,6 +118,11 @@ export default function ProductsPage() {
               <div className="feature-list">
                 {product.features.map((feature) => <span key={feature}>{feature}</span>)}
               </div>
+              {product.href && (
+                <Link className="product-launch-link" href={product.href}>
+                  Open {product.name} Studio <span>→</span>
+                </Link>
+              )}
             </div>
             <div className="product-stage">
               <div className="stage-window">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { SiteFooter } from "../components/SiteFooter";
 import { SiteHeader } from "../components/SiteHeader";
 
@@ -60,7 +61,7 @@ export default function WorkflowsPage() {
           <div className="builder-main">
             <div className="builder-toolbar">
               <div><strong>Security issue triage</strong><small>Draft saved</small></div>
-              <div><small className="builder-status">● Ready to test</small><button className="button button-nav">Publish</button></div>
+              <div><small className="builder-status">● Ready to test</small><Link className="button button-nav" href="/loom">Open Loom</Link></div>
             </div>
             <div className="builder-canvas">
               <div className="flow-node">

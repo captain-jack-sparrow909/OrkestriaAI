@@ -232,7 +232,9 @@ export const functionDefinition = {
     "databases.write",
     "rows.read",
     "rows.write",
-    "storage.read",
-    "storage.write",
+    "buckets.read",
+    "buckets.write",
+    "files.read",
+    "files.write",
   ],
 };

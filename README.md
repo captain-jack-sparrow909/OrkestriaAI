@@ -59,3 +59,13 @@ policy—not model output—decides when human approval is mandatory.
 
 The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 `DEEP_SEEK_API_KEY`, and uses `deepseek-v4-flash` by default.
+
+## Current phase
+
+Phase 2 ships Vela Browser Studio and Loom Workflow Studio as protected,
+responsive product surfaces. Both create guarded DeepSeek plans through the
+live Appwrite orchestrator, persist runs and audit events, enforce durable rate
+limits, and create approval records for consequential actions.
+
+**Next phase:** Tempo + Aegis — engineering operations and secure software
+delivery.

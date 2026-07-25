@@ -58,12 +58,30 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  const response = await render("/dashboard");
-  assert.ok([302, 303, 307, 308].includes(response.status));
-  assert.match(
-    response.headers.get("location") ?? "",
-    /\/signin-with-chatgpt\?return_to=%2Fdashboard$/,
-  );
+  for (const path of ["/dashboard", "/vela", "/loom"]) {
+    const response = await render(path);
+    assert.ok([302, 303, 307, 308].includes(response.status));
+    assert.match(
+      response.headers.get("location") ?? "",
+      new RegExp(`/signin-with-chatgpt\\?return_to=${encodeURIComponent(path).replaceAll("%", "%")}$`),
+    );
+  }
+});
+
+test("ships the Phase 2 Vela and Loom studios", async () => {
+  const [vela, loom, repository, orchestrator] = await Promise.all([
+    readFile(new URL("../app/vela/VelaStudio.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/loom/LoomStudio.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(vela, /Plan browser mission/);
+  assert.match(vela, /always-require-approval/);
+  assert.match(loom, /Generate workflow/);
+  assert.match(loom, /external messages require approval/);
+  assert.match(repository, /enforceAgentPlanRateLimit/);
+  assert.match(orchestrator, /x-orkestria-user-id/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

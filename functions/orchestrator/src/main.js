@@ -49,7 +49,9 @@ function audit(log, event) {
 async function orchestrator({ req, res, log, error }) {
   const startedAt = Date.now();
   const requestId = req.headers["x-appwrite-execution-id"] || ID.unique();
-  const userId = req.headers["x-appwrite-user-id"];
+  const userId =
+    req.headers["x-appwrite-user-id"] ||
+    req.headers["x-orkestria-user-id"];
   const path = req.path || "/";
   const method = req.method || "GET";
 
@@ -57,7 +59,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "foundation",
+      phase: "vela-loom",
       requestId,
     });
   }

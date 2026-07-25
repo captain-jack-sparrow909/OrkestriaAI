@@ -1,5 +1,9 @@
 import { getChatGPTUser } from "../../chatgpt-auth";
-import { decideApproval, listPendingApprovals } from "../../lib/platform/repository";
+import {
+  decideApproval,
+  ensureWorkspaceForUser,
+  listPendingApprovals,
+} from "../../lib/platform/repository";
 
 function workspaceIdFrom(request: Request) {
   return new URL(request.url).searchParams.get("workspaceId")?.slice(0, 36);
@@ -9,12 +13,19 @@ export async function GET(request: Request) {
   const user = await getChatGPTUser();
   if (!user) return Response.json({ error: "Authentication required" }, { status: 401 });
 
-  const workspaceId = workspaceIdFrom(request);
-  if (!workspaceId) {
-    return Response.json({ error: "workspaceId is required" }, { status: 400 });
-  }
+  const requestedWorkspaceId = workspaceIdFrom(request);
 
   try {
+    const ensured = requestedWorkspaceId
+      ? null
+      : await ensureWorkspaceForUser(user.email, user.displayName);
+    const workspaceId = requestedWorkspaceId || ensured?.workspaceId;
+    if (!workspaceId) {
+      return Response.json(
+        { error: "Appwrite is not configured", code: "foundation_unconfigured" },
+        { status: 503 },
+      );
+    }
     const approvals = await listPendingApprovals(workspaceId, user.email);
     if (approvals === null) {
       return Response.json(
@@ -22,7 +33,7 @@ export async function GET(request: Request) {
         { status: 503 },
       );
     }
-    return Response.json({ approvals });
+    return Response.json({ approvals, workspaceId });
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : "Unable to list approvals" },
