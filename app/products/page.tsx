@@ -7,10 +7,10 @@ const products = [
     id: "atlas",
     mark: "A",
     kicker: "AUTONOMOUS BROWSER AGENT",
-    name: "Atlas",
+    name: "Vela",
     title: "A capable pair of hands for the open web.",
     description:
-      "Atlas turns a goal into a transparent research and execution plan. It can navigate authenticated tools, compare information, collect evidence, and fill complex forms—then pauses before any purchase, submission, or irreversible action.",
+      "Vela turns a goal into a transparent research and execution plan. It can navigate authenticated tools, compare information, collect evidence, and fill complex forms—then pauses before any purchase, submission, or irreversible action.",
     features: ["Multi-tab planning", "Source traceability", "Session isolation", "Action approvals"],
     rows: [
       ["01", "Research target vendors", "24 sources"],
@@ -37,10 +37,10 @@ const products = [
     id: "sentry",
     mark: "S",
     kicker: "AI DEVOPS ASSISTANT",
-    name: "Sentry",
+    name: "Tempo",
     title: "See the problem. Understand the risk. Act safely.",
     description:
-      "Sentry correlates deployments, traces, logs, alerts, and infrastructure changes to explain incidents in context. It recommends evidence-backed remediations and routes production changes through your approval policy.",
+      "Tempo correlates deployments, traces, logs, alerts, and infrastructure changes to explain incidents in context. It recommends evidence-backed remediations and routes production changes through your approval policy.",
     features: ["Incident correlation", "Change intelligence", "Runbook execution", "Safe rollback plans"],
     rows: [
       ["!", "Checkout p95 elevated", "+186ms"],
@@ -82,7 +82,7 @@ const products = [
 
 export const metadata = {
   title: "Product suite — OrkestriaAI",
-  description: "Meet Atlas, Loom, Sentry, Helio, and Aegis—the OrkestriaAI operations suite.",
+  description: "Meet Vela, Loom, Tempo, Helio, and Aegis—the OrkestriaAI operations suite.",
 };
 
 export default function ProductsPage() {

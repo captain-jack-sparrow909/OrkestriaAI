@@ -32,9 +32,9 @@ test("server-renders the OrkestriaAI landing page and product suite", async () =
   assert.match(html, /<title>OrkestriaAI — Intelligence that gets work done<\/title>/i);
   assert.match(html, /Intelligence that/);
   assert.match(html, /gets work done\./);
-  assert.match(html, /Atlas/);
+  assert.match(html, /Vela/);
   assert.match(html, /Loom/);
-  assert.match(html, /Sentry/);
+  assert.match(html, /Tempo/);
   assert.match(html, /Helio/);
   assert.match(html, /Aegis/);
   assert.match(html, /Your approval is required/);

@@ -13,9 +13,9 @@ inside clear organizational boundaries.
 
 | Product | Capability | Promise |
 | --- | --- | --- |
-| **Atlas** | Autonomous browser agent | A capable pair of hands for the open web. |
+| **Vela** | Autonomous browser agent | A capable pair of hands for the open web. |
 | **Loom** | AI workflow builder | Describe the work; Loom builds the flow. |
-| **Sentry** | AI DevOps assistant | See the problem, understand the risk, act safely. |
+| **Tempo** | AI DevOps assistant | See the problem, understand the risk, act safely. |
 | **Helio** | AI cloud cost optimizer | Savings engineers will actually trust. |
 | **Aegis** | AI security review assistant | Findings that lead to better code. |
 
@@ -103,10 +103,10 @@ Recommended additions for the product app:
 | `approval_requests` | Human checkpoints | runId, action, risk, state, approverIds |
 | `audit_events` | Immutable activity record | actor, action, target, result, metadata |
 | `files` | Storage metadata | bucketId, fileId, ownerId, scanStatus, size |
-| `incidents` | Sentry incidents | service, severity, cause, evidence, state |
+| `incidents` | Tempo incidents | service, severity, cause, evidence, state |
 | `cost_findings` | Helio recommendations | resource, savings, confidence, risk |
 | `security_findings` | Aegis findings | fingerprint, severity, CWE, fix, state |
-| `browser_sessions` | Atlas sessions | state, domainPolicy, expiresAt |
+| `browser_sessions` | Vela sessions | state, domainPolicy, expiresAt |
 | `notifications` | User inbox | userId, type, readAt, entityRef |
 
 All tenant-owned documents must include `workspaceId`. Appwrite permissions
@@ -136,7 +136,7 @@ database.
 ## Primary product navigation
 
 - **Command center:** activity, system health, savings, risks, and approvals.
-- **Agents:** Atlas, Loom, Sentry, Helio, and Aegis.
+- **Agents:** Vela, Loom, Tempo, Helio, and Aegis.
 - **Workflows:** templates, canvas, versions, runs, and schedules.
 - **Approvals:** prioritized inbox, policy reason, evidence, and action diff.
 - **Connections:** apps, cloud accounts, repositories, observability, and secrets.
@@ -151,26 +151,41 @@ Authentication, workspaces, RBAC, connections, command center, run model,
 approval engine, audit logging, notifications, rate limits, and platform
 observability.
 
-### Phase 2 — Atlas + Loom
+**Next phase:** Vela + Loom — deliver the first complete agent and automation
+experiences on top of the shared foundation.
+
+### Phase 2 — Vela + Loom
 
 Launch the browser agent and workflow builder first. Together they prove the
 shared execution engine, connector framework, human approval model, and job
 system.
 
-### Phase 3 — Sentry + Aegis
+**Next phase:** Tempo + Aegis — extend the platform into engineering operations
+and secure software delivery.
+
+### Phase 3 — Tempo + Aegis
 
 Add GitHub/GitLab, CI, cloud, and observability connectors. Reuse the approval
 engine for code changes, rollbacks, and infrastructure remediation.
+
+**Next phase:** Helio — add financial intelligence and verified savings to the
+shared operational context.
 
 ### Phase 4 — Helio
 
 Add billing/usage ingestion, normalization, ownership mapping, savings
 calculation, anomaly detection, and realized-savings tracking.
 
+**Next phase:** Enterprise scale — harden governance, identity, networking, and
+regional controls for larger organizations.
+
 ### Phase 5 — Enterprise scale
 
 SAML/SCIM, custom roles, regional data residency, private networking, policy
 packs, compliance exports, marketplace connectors, and enterprise SLAs.
+
+**Next phase:** Ecosystem expansion — launch the connector marketplace,
+partner SDK, vertical policy packs, and continuous product intelligence.
 
 ## Success metrics
 
@@ -185,7 +200,7 @@ packs, compliance exports, marketplace connectors, and enterprise SLAs.
 
 ## Important product recommendations
 
-1. Launch **Atlas + Loom** before all five products. They create the shared
+1. Launch **Vela + Loom** before all five products. They create the shared
    platform primitives and the clearest early demo.
 2. Make the **approval inbox** a flagship experience, not a settings utility.
 3. Price primarily on included actions/compute with seats as a secondary axis.

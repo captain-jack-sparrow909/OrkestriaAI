@@ -10,10 +10,10 @@ const suites = [
     id: "atlas",
     number: "01",
     mark: "A",
-    name: "Atlas",
+    name: "Vela",
     title: "Browser intelligence",
     description:
-      "Give Atlas an outcome. It researches, navigates, and completes the work—pausing at the exact moment human judgment matters.",
+      "Give Vela an outcome. It researches, navigates, and completes the work—pausing at the exact moment human judgment matters.",
     signal: "3 approvals waiting",
     color: "violet",
   },
@@ -32,10 +32,10 @@ const suites = [
     id: "sentry",
     number: "03",
     mark: "S",
-    name: "Sentry",
+    name: "Tempo",
     title: "DevOps copilot",
     description:
-      "Connect deployments, alerts, infrastructure, and logs. Sentry finds the likely cause and proposes the safest next move.",
+      "Connect deployments, alerts, infrastructure, and logs. Tempo finds the likely cause and proposes the safest next move.",
     signal: "All systems nominal",
     color: "orange",
   },
@@ -67,7 +67,7 @@ const scenarios = [
   {
     label: "Production incident",
     query: "Investigate the checkout latency spike after today’s deployment.",
-    agent: "Sentry",
+    agent: "Tempo",
     steps: [
       ["Correlated deploy #482 with p95 latency", "done"],
       ["Found N+1 query in checkout-service", "done"],
@@ -89,7 +89,7 @@ const scenarios = [
   {
     label: "Vendor research",
     query: "Compare SOC 2 vendors and shortlist the best three for us.",
-    agent: "Atlas",
+    agent: "Vela",
     steps: [
       ["Reviewed 28 verified vendor pages", "done"],
       ["Normalized pricing and feature data", "done"],

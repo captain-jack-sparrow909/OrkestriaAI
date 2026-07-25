@@ -8,9 +8,9 @@ prototype. The intended production backend is Appwrite.
 
 ## Product suite
 
-- **Atlas** — autonomous browser agent
+- **Vela** — autonomous browser agent
 - **Loom** — AI workflow builder
-- **Sentry** — AI DevOps assistant
+- **Tempo** — AI DevOps assistant
 - **Helio** — AI cloud cost optimizer
 - **Aegis** — AI security review assistant
 
