@@ -1,0 +1,44 @@
+export const appwriteTables = {
+  workspaces: "workspaces",
+  memberships: "memberships",
+  runs: "runs",
+  approvals: "approvals",
+  auditEvents: "audit_events",
+  jobs: "jobs",
+  files: "files",
+  rateLimits: "rate_limits",
+} as const;
+
+export type AppwriteServerConfig = {
+  endpoint: string;
+  projectId: string;
+  apiKey: string;
+  databaseId: string;
+};
+
+export function getAppwriteServerConfig(): AppwriteServerConfig | null {
+  const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+  const projectId = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  const apiKey = process.env.APPWRITE_API_KEY;
+  const databaseId = process.env.APPWRITE_DATABASE_ID || "orkestria";
+
+  if (!endpoint || !projectId || !apiKey) return null;
+
+  return {
+    endpoint: endpoint.replace(/\/$/, ""),
+    projectId,
+    apiKey,
+    databaseId,
+  };
+}
+
+export function appwriteFoundationStatus() {
+  const config = getAppwriteServerConfig();
+  return {
+    configured: Boolean(config),
+    endpointConfigured: Boolean(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT),
+    projectConfigured: Boolean(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID),
+    serverKeyConfigured: Boolean(process.env.APPWRITE_API_KEY),
+    databaseId: process.env.APPWRITE_DATABASE_ID || "orkestria",
+  };
+}

@@ -151,6 +151,12 @@ Authentication, workspaces, RBAC, connections, command center, run model,
 approval engine, audit logging, notifications, rate limits, and platform
 observability.
 
+**Implementation status:** The protected command center, seven-role permission
+model, eight-table Appwrite schema, private bucket definitions, approval API,
+audit writer, idempotent job model, structured Function logs, and provisioning
+automation are implemented. Connecting and provisioning the live Appwrite
+project requires its endpoint, project ID, and a scoped server API key.
+
 **Next phase:** Vela + Loom — deliver the first complete agent and automation
 experiences on top of the shared foundation.
 

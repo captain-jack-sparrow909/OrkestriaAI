@@ -3,8 +3,9 @@
 OrkestriaAI is a trusted AI operations control plane for browser work,
 automation, DevOps, cloud cost, and security.
 
-This repository contains the first product website and interactive product
-prototype. The intended production backend is Appwrite.
+This repository contains the product website, protected command center, and
+Appwrite foundation for identity-aware workspaces, approvals, audit events,
+files, and background jobs.
 
 ## Product suite
 
@@ -33,3 +34,18 @@ npm test
 
 Copy `.env.example` to `.env.local` when an Appwrite project is ready to
 connect.
+
+## Appwrite foundation
+
+The foundation is declared in `appwrite/schema.mjs` and includes eight TablesDB
+tables, three private Storage buckets, and the `orchestrator` Function.
+
+After adding an Appwrite project endpoint, project ID, and scoped server API key:
+
+```bash
+npm run appwrite:provision
+```
+
+The Appwrite Function source lives in `functions/orchestrator`. The hosted
+preview uses platform-managed sign-in; workspace authorization and all durable
+records are designed to be enforced by Appwrite.

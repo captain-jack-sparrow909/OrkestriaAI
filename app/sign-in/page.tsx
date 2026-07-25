@@ -1,15 +1,15 @@
-"use client";
-
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { chatGPTSignInPath, getChatGPTUser } from "../chatgpt-auth";
 
-export default function SignInPage() {
-  const [submitted, setSubmitted] = useState(false);
+export const dynamic = "force-dynamic";
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitted(true);
-  };
+export const metadata = {
+  title: "Sign in",
+  description: "Continue securely to your OrkestriaAI workspace.",
+};
+
+export default async function SignInPage() {
+  const user = await getChatGPTUser();
 
   return (
     <main className="auth-page">
@@ -25,31 +25,26 @@ export default function SignInPage() {
         </div>
       </section>
       <section className="auth-form-wrap">
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <span className="kicker">WELCOME TO ORKESTRIA</span>
-          <h1>Continue to your workspace</h1>
-          <p>Start orchestrating safe, useful AI work in minutes.</p>
-          {submitted ? (
-            <div className="auth-success" role="status">
-              Your workspace access request is ready. Appwrite authentication will complete this flow when your project keys are connected.
-            </div>
-          ) : (
-            <>
-              <button type="button" className="oauth-button"><span>G</span> Continue with Google</button>
-              <div className="divider">or use email</div>
-              <label className="field">
-                <span>Work email</span>
-                <input type="email" placeholder="you@company.com" required />
-              </label>
-              <label className="field">
-                <span>Password</span>
-                <input type="password" placeholder="At least 8 characters" minLength={8} required />
-              </label>
-              <button className="button button-primary auth-submit" type="submit">Continue <span>↗</span></button>
-            </>
-          )}
-          <p className="auth-note">New to OrkestriaAI? <Link href="/pricing">Create a workspace</Link></p>
-        </form>
+        <div className="auth-form">
+          <span className="kicker">SECURE WORKSPACE ACCESS</span>
+          <h1>{user ? "Your command center is ready" : "Continue to your workspace"}</h1>
+          <p>
+            {user
+              ? `Signed in as ${user.email}.`
+              : "Use your verified ChatGPT identity to enter the protected OrkestriaAI preview."}
+          </p>
+          <Link
+            className="button button-primary auth-submit"
+            href={user ? "/dashboard" : chatGPTSignInPath("/dashboard")}
+          >
+            {user ? "Open command center" : "Sign in securely"} <span>↗</span>
+          </Link>
+          <div className="auth-security-note">
+            <span>✓</span>
+            <p><strong>Protected by default</strong><small>Authentication is handled by the hosting platform. Workspace roles and durable records are enforced through Appwrite.</small></p>
+          </div>
+          <p className="auth-note">Need a workspace? <Link href="/pricing">Compare plans</Link></p>
+        </div>
       </section>
     </main>
   );

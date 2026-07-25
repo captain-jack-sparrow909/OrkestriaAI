@@ -57,6 +57,15 @@ test("renders every primary marketing route", async () => {
   }
 });
 
+test("protects the command center behind authenticated identity", async () => {
+  const response = await render("/dashboard");
+  assert.ok([302, 303, 307, 308].includes(response.status));
+  assert.match(
+    response.headers.get("location") ?? "",
+    /\/signin-with-chatgpt\?return_to=%2Fdashboard$/,
+  );
+});
+
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {
   const [layout, packageJson, blueprint, envExample] = await Promise.all([
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
@@ -72,4 +81,5 @@ test("keeps production metadata and the Appwrite blueprint aligned", async () =>
   assert.match(blueprint, /Appwrite architecture/);
   assert.match(blueprint, /approval_requests/);
   assert.match(envExample, /NEXT_PUBLIC_APPWRITE_PROJECT_ID/);
+  assert.match(envExample, /APPWRITE_FUNCTION_ID/);
 });
