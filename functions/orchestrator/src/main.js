@@ -5,8 +5,9 @@ import {
   normalizeDecision,
   safeJsonObject,
 } from "./policy.js";
+import { createAgentPlan } from "./deepseek.js";
 
-const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || "orkestria";
+const DATABASE_ID = process.env.ORK_DB_ID || "orkestria";
 
 function createTables(req) {
   const client = new Client()
@@ -175,6 +176,128 @@ async function orchestrator({ req, res, log, error }) {
         durationMs: Date.now() - startedAt,
       });
       return res.json({ approval: updated, requestId });
+    }
+
+    if (path === "/ai/plan" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const agent = String(body.agent || "").toLowerCase().slice(0, 32);
+      const goal = String(body.goal || "").slice(0, 6000);
+      if (!workspaceId || !agent || !goal) {
+        return res.json({ error: "workspaceId, agent, and goal are required", requestId }, 400);
+      }
+
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json({ error: "Agent planning is not allowed for this role", requestId }, 403);
+      }
+
+      const now = new Date().toISOString();
+      const run = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "runs",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          agent,
+          title: goal.slice(0, 255),
+          status: "planning",
+          risk: "medium",
+          initiatorEmail: membership.userEmail,
+          currentStep: "Building an evidence-aware plan",
+          progress: 10,
+          costCents: 0,
+          startedAt: now,
+          metadata: "{}",
+        },
+        permissions: [],
+      });
+
+      const generated = await createAgentPlan({
+        agent,
+        goal,
+        context: body.context,
+        userId,
+      });
+      const completedAt = new Date().toISOString();
+      const status = generated.plan.approvalRequired ? "waiting_approval" : "planned";
+
+      const updatedRun = await tables.updateRow({
+        databaseId: DATABASE_ID,
+        tableId: "runs",
+        rowId: run.$id,
+        data: {
+          status,
+          risk: generated.plan.risk,
+          currentStep: generated.plan.approvalRequired
+            ? "Waiting for human approval"
+            : "Plan ready for execution",
+          progress: 100,
+          completedAt,
+          metadata: JSON.stringify({
+            provider: "deepseek",
+            model: generated.model,
+            usage: generated.usage,
+            plan: generated.plan,
+          }),
+        },
+      });
+
+      let approval = null;
+      if (generated.plan.approvalRequired) {
+        approval = await tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "approvals",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            runId: run.$id,
+            action: generated.plan.summary,
+            description: generated.plan.rationale,
+            risk: generated.plan.risk,
+            state: "pending",
+            requestedBy: membership.userEmail,
+            requestedAt: completedAt,
+          },
+          permissions: [],
+        });
+      }
+
+      await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "audit_events",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          actorEmail: membership.userEmail,
+          action: "ai.plan.created",
+          targetType: "run",
+          targetId: run.$id,
+          outcome: "success",
+          metadata: JSON.stringify({
+            agent,
+            model: generated.model,
+            totalTokens: generated.usage.totalTokens,
+            approvalRequired: generated.plan.approvalRequired,
+            requestId,
+          }),
+          occurredAt: completedAt,
+        },
+        permissions: [],
+      });
+
+      audit(log, {
+        requestId,
+        event: "ai.plan.created",
+        workspaceId,
+        runId: run.$id,
+        agent,
+        model: generated.model,
+        totalTokens: generated.usage.totalTokens,
+        approvalRequired: generated.plan.approvalRequired,
+        durationMs: Date.now() - startedAt,
+      });
+
+      return res.json({ run: updatedRun, plan: generated.plan, approval, requestId });
     }
 
     return res.json({ error: "Route not found", requestId }, 404);

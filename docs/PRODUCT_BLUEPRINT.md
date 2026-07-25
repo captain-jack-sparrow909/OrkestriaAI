@@ -154,8 +154,11 @@ observability.
 **Implementation status:** The protected command center, seven-role permission
 model, eight-table Appwrite schema, private bucket definitions, approval API,
 audit writer, idempotent job model, structured Function logs, and provisioning
-automation are implemented. Connecting and provisioning the live Appwrite
-project requires its endpoint, project ID, and a scoped server API key.
+automation are implemented. DeepSeek V4 Flash is integrated behind the
+orchestrator as a planning-only intelligence layer; model output is validated,
+bounded, metered, and forced through approval policy before risky execution.
+Connecting and provisioning the live Appwrite project requires its endpoint,
+project ID, and a scoped server API key.
 
 **Next phase:** Vela + Loom — deliver the first complete agent and automation
 experiences on top of the shared foundation.

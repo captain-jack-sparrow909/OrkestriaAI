@@ -8,6 +8,7 @@ import {
   normalizeDecision,
   safeJsonObject,
 } from "../functions/orchestrator/src/policy.js";
+import { validatePlan } from "../functions/orchestrator/src/deepseek.js";
 
 test("declares unique Appwrite foundation resources", () => {
   assert.equal(database.id, "orkestria");
@@ -47,4 +48,43 @@ test("normalizes decisions and bounded retry delays", () => {
   assert.equal(calculateRetryDelay(1), 15);
   assert.equal(calculateRetryDelay(5), 240);
   assert.equal(calculateRetryDelay(99), 900);
+});
+
+test("forces approval for risky DeepSeek plans", () => {
+  const plan = validatePlan({
+    summary: "Deploy the proposed configuration",
+    risk: "high",
+    approvalRequired: false,
+    rationale: "This modifies production infrastructure.",
+    steps: [
+      {
+        title: "Apply change",
+        kind: "external_action",
+        description: "Deploy the configuration.",
+        requiresApproval: false,
+      },
+    ],
+  });
+
+  assert.equal(plan.risk, "high");
+  assert.equal(plan.approvalRequired, true);
+  assert.equal(plan.steps.length, 1);
+});
+
+test("bounds untrusted model output", () => {
+  const plan = validatePlan({
+    summary: "x".repeat(500),
+    risk: "unexpected",
+    approvalRequired: false,
+    steps: Array.from({ length: 20 }, (_, index) => ({
+      title: `Step ${index}`,
+      kind: "analyze",
+      description: "Inspect evidence.",
+    })),
+  });
+
+  assert.equal(plan.summary.length, 255);
+  assert.equal(plan.risk, "high");
+  assert.equal(plan.approvalRequired, true);
+  assert.equal(plan.steps.length, 12);
 });

@@ -44,8 +44,18 @@ After adding an Appwrite project endpoint, project ID, and scoped server API key
 
 ```bash
 npm run appwrite:provision
+npm run appwrite:deploy-function
 ```
 
 The Appwrite Function source lives in `functions/orchestrator`. The hosted
 preview uses platform-managed sign-in; workspace authorization and all durable
 records are designed to be enforced by Appwrite.
+
+## AI provider
+
+The orchestrator uses DeepSeek V4 Flash through its OpenAI-compatible Chat
+Completions API. The model only produces bounded, validated plans. OrkestriaAI
+policy—not model output—decides when human approval is mandatory.
+
+The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
+`DEEP_SEEK_API_KEY`, and uses `deepseek-v4-flash` by default.

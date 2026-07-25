@@ -13,7 +13,9 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "appwrite:provision": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/appwrite/provision.mjs",
-    "appwrite:check": "node --test tests/appwrite-foundation.test.mjs"
+    "appwrite:deploy-function": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/appwrite/deploy-function.mjs",
+    "appwrite:check": "node --test tests/appwrite-foundation.test.mjs",
+    "deepseek:check": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/deepseek/check.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

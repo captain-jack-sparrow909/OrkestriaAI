@@ -17,9 +17,9 @@ const headers = {
   "X-Appwrite-Response-Format": "1.9.5",
 };
 
-async function request(path, body) {
+async function request(path, body, method = "POST") {
   const response = await fetch(`${endpoint.replace(/\/$/, "")}${path}`, {
-    method: "POST",
+    method,
     headers,
     body: JSON.stringify(body),
   });
@@ -38,18 +38,36 @@ async function request(path, body) {
   );
 }
 
+async function upsertVariable(variableId, key, value, secret) {
+  const created = await request(`/functions/${functionDefinition.id}/variables`, {
+    variableId,
+    key,
+    value,
+    secret,
+  });
+
+  if (created.state === "created") return created;
+
+  const updated = await request(
+    `/functions/${functionDefinition.id}/variables/${variableId}`,
+    { key, value, secret },
+    "PUT",
+  );
+  return { ...updated, state: "updated" };
+}
+
 const results = [];
+const databaseId = process.env.APPWRITE_DATABASE_ID || database.id;
+
 results.push([
   "database",
   database.id,
   await request("/tablesdb", {
-    databaseId: process.env.APPWRITE_DATABASE_ID || database.id,
+    databaseId,
     name: database.name,
     enabled: true,
   }),
 ]);
-
-const databaseId = process.env.APPWRITE_DATABASE_ID || database.id;
 
 for (const table of tables) {
   results.push([
@@ -103,6 +121,32 @@ results.push([
     commands: functionDefinition.commands,
     scopes: functionDefinition.scopes,
   }),
+]);
+
+const deepSeekKey = process.env.DEEPSEEK_API_KEY || process.env.DEEP_SEEK_API_KEY;
+if (deepSeekKey) {
+  results.push([
+    "variable",
+    "DEEPSEEK_API_KEY",
+    await upsertVariable("deepseek-api-key", "DEEPSEEK_API_KEY", deepSeekKey, true),
+  ]);
+}
+
+results.push([
+  "variable",
+  "DEEPSEEK_MODEL",
+  await upsertVariable(
+    "deepseek-model",
+    "DEEPSEEK_MODEL",
+    process.env.DEEPSEEK_MODEL || "deepseek-v4-flash",
+    false,
+  ),
+]);
+
+results.push([
+  "variable",
+  "ORK_DB_ID",
+  await upsertVariable("ork-db-id", "ORK_DB_ID", databaseId, false),
 ]);
 
 for (const [kind, id, result] of results) {
