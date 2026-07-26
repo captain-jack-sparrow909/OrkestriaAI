@@ -444,6 +444,115 @@ export type LaunchroomOverview = {
   drills: RecoveryDrillRecord[];
 };
 
+export type ExecutorRegistryRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  provider: string;
+  environment: string;
+  status: string;
+  version: string;
+  allowedActions: string;
+  attestation: string;
+  verifiedBy?: string;
+  verifiedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TelemetryRollupRecord = {
+  $id: string;
+  workspaceId: string;
+  sourceType: string;
+  windowStart: string;
+  windowEnd: string;
+  requestCount: number;
+  successCount: number;
+  errorCount: number;
+  p50LatencyMs: number;
+  p95LatencyMs: number;
+  p99LatencyMs: number;
+  availabilityBps: number;
+  costCents: number;
+  evidence: string;
+  createdAt: string;
+};
+
+export type IncidentExerciseRecord = {
+  $id: string;
+  workspaceId: string;
+  kind: string;
+  status: string;
+  severity: string;
+  scenario: string;
+  detectionSeconds: number;
+  mitigationSeconds: number;
+  externalImpact: number;
+  evidence: string;
+  initiatedBy: string;
+  startedAt: string;
+  completedAt?: string;
+};
+
+export type BillingControlRecord = {
+  $id: string;
+  workspaceId: string;
+  status: string;
+  currency: string;
+  monthlyBudgetCents: number;
+  warningPercent: number;
+  hardStopPercent: number;
+  currentUsageCents: number;
+  config: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SupportCaseRecord = {
+  $id: string;
+  workspaceId: string;
+  source: string;
+  subject: string;
+  description: string;
+  priority: string;
+  status: string;
+  customerEmail?: string;
+  customerNotified: number;
+  ownerEmail: string;
+  slaDueAt: string;
+  resolvedAt?: string;
+  evidence: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ScaleGateRecord = {
+  $id: string;
+  workspaceId: string;
+  status: string;
+  recommendation: "hold" | "expand";
+  score: number;
+  expansionAuthorized: number;
+  evidence: string;
+  blockers: string;
+  decidedBy?: string;
+  decisionRationale?: string;
+  createdAt: string;
+  updatedAt: string;
+  decidedAt?: string;
+};
+
+export type ScaleOpsOverview = {
+  workspaceId: string;
+  executors: ExecutorRegistryRecord[];
+  telemetry: TelemetryRollupRecord[];
+  incidents: IncidentExerciseRecord[];
+  billing: BillingControlRecord;
+  supportCases: SupportCaseRecord[];
+  gate: ScaleGateRecord;
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

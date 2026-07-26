@@ -44,6 +44,12 @@ test("declares unique Appwrite foundation resources", () => {
       "pilot_exercises",
       "support_rotations",
       "launch_decisions",
+      "executor_registry",
+      "telemetry_rollups",
+      "incident_exercises",
+      "billing_controls",
+      "support_cases",
+      "scale_gates",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -74,6 +80,12 @@ test("keeps every queried field indexed", () => {
   const pilotExercises = tables.find((table) => table.id === "pilot_exercises");
   const supportRotations = tables.find((table) => table.id === "support_rotations");
   const launchDecisions = tables.find((table) => table.id === "launch_decisions");
+  const executorRegistry = tables.find((table) => table.id === "executor_registry");
+  const telemetryRollups = tables.find((table) => table.id === "telemetry_rollups");
+  const incidentExercises = tables.find((table) => table.id === "incident_exercises");
+  const billingControls = tables.find((table) => table.id === "billing_controls");
+  const supportCases = tables.find((table) => table.id === "support_cases");
+  const scaleGates = tables.find((table) => table.id === "scale_gates");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -98,6 +110,12 @@ test("keeps every queried field indexed", () => {
   assert.ok(pilotExercises.indexes.some((index) => index.attributes.includes("startedAt")));
   assert.ok(supportRotations.indexes.some((index) => index.key === "workspace_unique"));
   assert.ok(launchDecisions.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(executorRegistry.indexes.some((index) => index.key === "workspace_name_unique"));
+  assert.ok(telemetryRollups.indexes.some((index) => index.attributes.includes("windowEnd")));
+  assert.ok(incidentExercises.indexes.some((index) => index.attributes.includes("startedAt")));
+  assert.ok(billingControls.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(supportCases.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(scaleGates.indexes.some((index) => index.key === "workspace_unique"));
 });
 
 test("enforces approval and execution roles", () => {

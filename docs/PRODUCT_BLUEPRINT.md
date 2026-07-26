@@ -298,6 +298,28 @@ provider executors, ingest real pilot telemetry, exercise incident response,
 activate billing safeguards and customer support workflows, and expand only
 when measured SLOs support it.
 
+### Phase 9 — General Availability & Scale Operations
+
+Operate verified executors, SLO evidence, incident response, billing limits,
+customer-support workflows, and capacity expansion as one governed reliability
+system.
+
+**Implementation status:** ScaleOps ships as an authenticated GA Operations
+Control Room backed by six new Appwrite tables. The internal executor is
+attested only for no-egress control-plane work, while the external executor
+remains `awaiting_attestation`. Function-backed scale rehearsals create
+source-labelled synthetic telemetry and zero-impact incident evidence; neither
+is counted as live pilot or customer SLO proof. Internal usage budgets explicitly
+do not claim provider-side enforcement, and support drills explicitly record
+that no customer was contacted. Expansion authorization is rejected while any
+external executor, live traffic, provider billing, or real support evidence is
+missing.
+
+**Next phase:** Continuous Trust & Global Expansion — add multi-region
+resilience, provider redundancy, continuous model and policy evaluation,
+customer-facing service health, compliance automation, and measured regional
+rollout.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

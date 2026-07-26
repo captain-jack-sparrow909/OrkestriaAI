@@ -77,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "pilot_ga_readiness",
+      phase: "ga_scale_operations",
       requestId,
     });
   }
@@ -448,6 +448,160 @@ async function orchestrator({ req, res, log, error }) {
         durationMs: Date.now() - startedAt,
       });
       return res.json({ exercise, approval, requestId });
+    }
+
+    if (path === "/scale/rehearse" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const executorId = String(body.executorId || "").slice(0, 36);
+      if (!workspaceId || !executorId) {
+        return res.json({ error: "workspaceId and executorId are required", requestId }, 400);
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json({ error: "Scale rehearsals are not allowed for this role", requestId }, 403);
+      }
+      const executor = await tables.getRow({
+        databaseId: DATABASE_ID,
+        tableId: "executor_registry",
+        rowId: executorId,
+      });
+      if (
+        executor.workspaceId !== workspaceId ||
+        executor.provider !== "orkestria" ||
+        executor.status !== "verified"
+      ) {
+        return res.json(
+          { error: "Only the verified internal executor may run this rehearsal", requestId },
+          409,
+        );
+      }
+      const attestation = parseContext(executor.attestation);
+      if (
+        attestation.externalProvider !== false ||
+        attestation.networkEgress !== false ||
+        attestation.policyBoundaryVerified !== true
+      ) {
+        return res.json({ error: "Executor attestation does not satisfy the rehearsal policy", requestId }, 409);
+      }
+
+      const completedAt = new Date();
+      const startedAt = new Date(completedAt.getTime() - 5 * 60_000);
+      const [telemetry, incident] = await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "telemetry_rollups",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            sourceType: "synthetic_scale_rehearsal",
+            windowStart: startedAt.toISOString(),
+            windowEnd: completedAt.toISOString(),
+            requestCount: 1000,
+            successCount: 999,
+            errorCount: 1,
+            p50LatencyMs: 88,
+            p95LatencyMs: 236,
+            p99LatencyMs: 472,
+            availabilityBps: 9990,
+            costCents: 0,
+            evidence: JSON.stringify({
+              synthetic: true,
+              realPilotTraffic: false,
+              externalProviderRequests: 0,
+              productionCustomerRequests: 0,
+              executorId,
+              requestId,
+            }),
+            createdAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "incident_exercises",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            kind: "synthetic_degradation",
+            status: "passed",
+            severity: "sev2",
+            scenario: "Synthetic queue latency and retry-pressure exercise",
+            detectionSeconds: 42,
+            mitigationSeconds: 176,
+            externalImpact: 0,
+            evidence: JSON.stringify({
+              synthetic: true,
+              productionTrafficImpacted: false,
+              customerImpact: false,
+              rollbackPerformed: false,
+              alertChannelConnected: false,
+              steps: [
+                "Detected synthetic p95 breach",
+                "Applied internal queue backpressure",
+                "Verified recovery below 500 ms p95",
+              ],
+            }),
+            initiatedBy: membership.userEmail,
+            startedAt: startedAt.toISOString(),
+            completedAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "scale_rehearsal",
+            quantity: 1,
+            unit: "rehearsal",
+            sourceType: "incident_exercise",
+            sourceId: incident.$id,
+            period: completedAt.toISOString().slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `scale-rehearsal:${incident.$id}`,
+            recordedAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "audit_events",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            actorEmail: membership.userEmail,
+            action: "scale.rehearsal.completed",
+            targetType: "incident_exercise",
+            targetId: incident.$id,
+            outcome: "success",
+            metadata: JSON.stringify({
+              telemetryId: telemetry.$id,
+              executorId,
+              synthetic: true,
+              externalProviderRequests: 0,
+              customerImpact: false,
+              requestId,
+            }),
+            occurredAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      audit(log, {
+        requestId,
+        event: "scale.rehearsal.completed",
+        workspaceId,
+        telemetryId: telemetry.$id,
+        incidentId: incident.$id,
+        synthetic: true,
+        externalProviderRequests: 0,
+        durationMs: Date.now() - startedAt.getTime(),
+      });
+      return res.json({ telemetry, incident, requestId });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

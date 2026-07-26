@@ -28,6 +28,12 @@ export const appwriteTables = {
   pilotExercises: "pilot_exercises",
   supportRotations: "support_rotations",
   launchDecisions: "launch_decisions",
+  executorRegistry: "executor_registry",
+  telemetryRollups: "telemetry_rollups",
+  incidentExercises: "incident_exercises",
+  billingControls: "billing_controls",
+  supportCases: "support_cases",
+  scaleGates: "scale_gates",
 } as const;
 
 export type AppwriteServerConfig = {

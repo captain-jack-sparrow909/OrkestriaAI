@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes twenty-nine TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes thirty-five TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,13 +62,15 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 8 adds **Launchroom**, the Pilot & GA Command Center. It durably tracks
-pilot membership and consent truth, predefined production action envelopes,
-Function-backed exercises, support coverage, launch evidence, and owner-recorded
-go/hold decisions. External invitations, provider actions, backup
-acknowledgements, and recovery restores are never inferred from local records.
-A go decision is rejected while any launch blocker remains.
+Phase 9 adds **ScaleOps**, the General Availability Operations Control Room.
+It durably tracks executor attestations, source-labelled SLO telemetry,
+incident exercises, internal billing safeguards, customer-support workflows,
+and evidence-bound expansion gates. Synthetic evidence is never presented as
+live pilot traffic, provider execution, customer impact, provider-side billing
+enforcement, or real customer support. Expansion remains disabled while any
+external proof is missing.
 
-**Next phase:** Phase 9 — General Availability & Scale Operations: verified
-provider executors, real pilot telemetry, incident response exercises, billing
-controls, customer support workflows, and measured SLO-based expansion.
+**Next phase:** Phase 10 — Continuous Trust & Global Expansion: multi-region
+resilience, provider redundancy, continuous model and policy evaluation,
+customer-facing service health, compliance automation, and measured regional
+rollout.

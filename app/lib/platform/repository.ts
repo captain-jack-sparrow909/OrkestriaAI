@@ -11,10 +11,13 @@ import {
   type ConnectorCatalogRecord,
   type ConnectorInstallationRecord,
   type CustomRoleRecord,
+  type BillingControlRecord,
   type EcosystemOverview,
   type EnterpriseConfigRecord,
   type EnterpriseOverview,
   type ActionScopeRecord,
+  type ExecutorRegistryRecord,
+  type IncidentExerciseRecord,
   type JobRecord,
   type LaunchDecisionRecord,
   type LaunchroomOverview,
@@ -29,7 +32,11 @@ import {
   type ProductSignalRecord,
   type ProviderAuthorizationRecord,
   type RecoveryDrillRecord,
+  type ScaleGateRecord,
+  type ScaleOpsOverview,
+  type SupportCaseRecord,
   type SupportRotationRecord,
+  type TelemetryRollupRecord,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -2504,4 +2511,513 @@ export async function recordLaunchDecision(input: {
     },
   });
   return decision;
+}
+
+function billingControlRowId(workspaceId: string) {
+  return enterpriseRowId("billing", workspaceId);
+}
+
+function scaleGateRowId(workspaceId: string) {
+  return enterpriseRowId("scale", workspaceId);
+}
+
+function executorRowId(kind: string, workspaceId: string) {
+  return enterpriseRowId(`executor_${kind}`, workspaceId);
+}
+
+async function ensureScaleFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureLaunchroomFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+
+  await createIfMissing(appwrite, `${base}/${appwriteTables.executorRegistry}/rows`, {
+    rowId: executorRowId("internal", workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      name: "Orkestria control-plane executor",
+      provider: "orkestria",
+      environment: "production",
+      status: "verified",
+      version: "1.0.0",
+      allowedActions: JSON.stringify([
+        "control_plane.health_snapshot",
+        "scale.synthetic_rehearsal",
+      ]),
+      attestation: JSON.stringify({
+        artifactVerified: true,
+        policyBoundaryVerified: true,
+        externalProvider: false,
+        networkEgress: false,
+        verificationScope: "internal_control_plane_only",
+      }),
+      verifiedBy: "orkestria-release-policy",
+      verifiedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await createIfMissing(appwrite, `${base}/${appwriteTables.executorRegistry}/rows`, {
+    rowId: executorRowId("provider", workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      name: "External provider executor",
+      provider: "external_provider",
+      environment: "production",
+      status: "awaiting_attestation",
+      version: "0.0.0",
+      allowedActions: "[]",
+      attestation: JSON.stringify({
+        artifactVerified: false,
+        providerHandshakeVerified: false,
+        networkEgressReviewed: false,
+        externalProvider: true,
+      }),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+
+  await createIfMissing(appwrite, `${base}/${appwriteTables.billingControls}/rows`, {
+    rowId: billingControlRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      status: "internal_meter_enforced",
+      currency: "USD",
+      monthlyBudgetCents: 100000,
+      warningPercent: 70,
+      hardStopPercent: 100,
+      currentUsageCents: 0,
+      config: JSON.stringify({
+        internalUsageMeterEnforced: true,
+        externalProviderBudgetEnforced: false,
+        providerBillingConnected: false,
+        warningNotificationConnected: false,
+      }),
+      updatedBy: email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await createIfMissing(appwrite, `${base}/${appwriteTables.scaleGates}/rows`, {
+    rowId: scaleGateRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      status: "assessing",
+      recommendation: "hold",
+      score: 0,
+      expansionAuthorized: 0,
+      evidence: "{}",
+      blockers: JSON.stringify(["Scale evidence has not been refreshed."]),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 9,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+async function assessScale(
+  appwrite: NonNullable<ReturnType<typeof getClient>>,
+  workspaceId: string,
+) {
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [executors, telemetry, incidents, support, billing] = await Promise.all([
+    appwrite.client.request<RowList<ExecutorRegistryRecord>>(
+      `${base}/${appwriteTables.executorRegistry}/rows`,
+      { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<TelemetryRollupRecord>>(
+      `${base}/${appwriteTables.telemetryRollups}/rows`,
+      { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<IncidentExerciseRecord>>(
+      `${base}/${appwriteTables.incidentExercises}/rows`,
+      { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<SupportCaseRecord>>(
+      `${base}/${appwriteTables.supportCases}/rows`,
+      { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<BillingControlRecord>(
+      `${base}/${appwriteTables.billingControls}/rows/${billingControlRowId(workspaceId)}`,
+    ),
+  ]);
+  const billingConfig = parseRecord(billing.config);
+  const evidence = {
+    verifiedInternalExecutor: executors.rows.some(
+      (executor) => executor.provider === "orkestria" && executor.status === "verified",
+    ),
+    verifiedExternalExecutor: executors.rows.some(
+      (executor) => executor.provider !== "orkestria" && executor.status === "verified",
+    ),
+    syntheticSloPassed: telemetry.rows.some(
+      (rollup) =>
+        rollup.sourceType === "synthetic_scale_rehearsal" &&
+        rollup.availabilityBps >= 9990 &&
+        rollup.p95LatencyMs <= 500,
+    ),
+    livePilotTelemetry: telemetry.rows.some((rollup) => rollup.sourceType === "pilot_live"),
+    incidentWorkflowRehearsed: incidents.rows.some(
+      (incident) => incident.status === "passed",
+    ),
+    internalBillingGuardrail: billing.status === "internal_meter_enforced",
+    providerBillingSafeguard:
+      billingConfig.externalProviderBudgetEnforced === true &&
+      billingConfig.providerBillingConnected === true,
+    supportWorkflowRehearsed: support.rows.some(
+      (item) => item.source === "internal_exercise" && item.status === "resolved",
+    ),
+    realCustomerSupportActive: support.rows.some(
+      (item) => item.source === "customer" && item.customerNotified === 1,
+    ),
+  };
+  const blockerLabels: Record<keyof typeof evidence, string> = {
+    verifiedInternalExecutor: "The internal control-plane executor is not verified.",
+    verifiedExternalExecutor: "No external provider executor has a verified attestation.",
+    syntheticSloPassed: "The synthetic scale SLO rehearsal has not passed.",
+    livePilotTelemetry: "No real pilot traffic telemetry has been ingested.",
+    incidentWorkflowRehearsed: "The incident-response workflow has not been exercised.",
+    internalBillingGuardrail: "Internal usage budget enforcement is not active.",
+    providerBillingSafeguard: "Provider-side billing limits are not connected or verified.",
+    supportWorkflowRehearsed: "The support workflow has not been rehearsed.",
+    realCustomerSupportActive: "No real customer support delivery has evidence.",
+  };
+  const entries = Object.entries(evidence) as [keyof typeof evidence, boolean][];
+  const blockers = entries.filter(([, passed]) => !passed).map(([key]) => blockerLabels[key]);
+  const score = Math.round((entries.filter(([, passed]) => passed).length / entries.length) * 100);
+  const recommendation = blockers.length === 0 ? "expand" : "hold";
+  const path = `${base}/${appwriteTables.scaleGates}/rows/${scaleGateRowId(workspaceId)}`;
+  const current = await appwrite.client.request<ScaleGateRecord>(path);
+  return appwrite.client.request<ScaleGateRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        status: current.status === "decision_recorded" ? current.status : "assessing",
+        recommendation:
+          current.status === "decision_recorded" ? current.recommendation : recommendation,
+        score,
+        expansionAuthorized:
+          current.status === "decision_recorded" ? current.expansionAuthorized : 0,
+        evidence: JSON.stringify(evidence),
+        blockers: JSON.stringify(blockers),
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  });
+}
+
+export async function getScaleOpsOverview(
+  email: string,
+  displayName: string,
+): Promise<ScaleOpsOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureScaleFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view scale operations.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [executors, telemetry, incidents, billing, supportCases, gate] = await Promise.all([
+    appwrite.client.request<RowList<ExecutorRegistryRecord>>(
+      `${base}/${appwriteTables.executorRegistry}/rows`,
+      { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<TelemetryRollupRecord>>(
+      `${base}/${appwriteTables.telemetryRollups}/rows`,
+      {
+        queries: [
+          query.equal("workspaceId", workspace.workspaceId),
+          query.orderDesc("windowEnd"),
+          query.limit(50),
+        ],
+      },
+    ),
+    appwrite.client.request<RowList<IncidentExerciseRecord>>(
+      `${base}/${appwriteTables.incidentExercises}/rows`,
+      {
+        queries: [
+          query.equal("workspaceId", workspace.workspaceId),
+          query.orderDesc("startedAt"),
+          query.limit(50),
+        ],
+      },
+    ),
+    appwrite.client.request<BillingControlRecord>(
+      `${base}/${appwriteTables.billingControls}/rows/${billingControlRowId(workspace.workspaceId)}`,
+    ),
+    appwrite.client.request<RowList<SupportCaseRecord>>(
+      `${base}/${appwriteTables.supportCases}/rows`,
+      {
+        queries: [
+          query.equal("workspaceId", workspace.workspaceId),
+          query.orderDesc("createdAt"),
+          query.limit(50),
+        ],
+      },
+    ),
+    assessScale(appwrite, workspace.workspaceId),
+  ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    executors: executors.rows,
+    telemetry: telemetry.rows,
+    incidents: incidents.rows,
+    billing,
+    supportCases: supportCases.rows,
+    gate,
+  };
+}
+
+export async function runScaleRehearsal(input: {
+  workspaceId: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureScaleFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "agents.run")) {
+    throw new Error("You do not have permission to run scale rehearsals.");
+  }
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          executorId: executorRowId("internal", input.workspaceId),
+        }),
+        async: false,
+        path: "/scale/rehearse",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    telemetry?: TelemetryRollupRecord;
+    incident?: IncidentExerciseRecord;
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Scale rehearsal returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.telemetry ||
+    !response.incident
+  ) {
+    throw new Error(response?.error || execution.errors || "Scale rehearsal failed.");
+  }
+  return response;
+}
+
+export async function runSupportWorkflowDrill(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to run support workflow drills.");
+  }
+  const now = new Date();
+  const resolvedAt = new Date(now.getTime() + 4 * 60_000).toISOString();
+  const supportCase = await appwrite.client.request<SupportCaseRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.supportCases}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          source: "internal_exercise",
+          subject: "Synthetic pilot support escalation",
+          description: "Exercise the triage, ownership, SLA, and resolution workflow without contacting a customer.",
+          priority: "p2",
+          status: "resolved",
+          customerNotified: 0,
+          ownerEmail: input.email.toLowerCase(),
+          slaDueAt: new Date(now.getTime() + 30 * 60_000).toISOString(),
+          resolvedAt,
+          evidence: JSON.stringify({
+            synthetic: true,
+            customerContacted: false,
+            acknowledgementSeconds: 45,
+            resolutionSeconds: 240,
+            escalationChannelConnected: false,
+          }),
+          createdAt: now.toISOString(),
+          updatedAt: resolvedAt,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "scale.support_workflow.rehearsed",
+    targetType: "support_case",
+    targetId: supportCase.$id,
+    metadata: { customerContacted: false, synthetic: true },
+  });
+  return supportCase;
+}
+
+export async function updateBillingSafeguard(input: {
+  workspaceId: string;
+  email: string;
+  monthlyBudgetDollars: number;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const monthlyBudgetCents = Math.round(
+    Math.min(1_000_000, Math.max(10, input.monthlyBudgetDollars)) * 100,
+  );
+  const path =
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.billingControls}/rows/${billingControlRowId(input.workspaceId)}`;
+  const billing = await appwrite.client.request<BillingControlRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        status: "internal_meter_enforced",
+        monthlyBudgetCents,
+        warningPercent: 70,
+        hardStopPercent: 100,
+        config: JSON.stringify({
+          internalUsageMeterEnforced: true,
+          externalProviderBudgetEnforced: false,
+          providerBillingConnected: false,
+          warningNotificationConnected: false,
+        }),
+        updatedBy: input.email.toLowerCase(),
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "scale.billing_guardrail.updated",
+    targetType: "billing_control",
+    targetId: billing.$id,
+    metadata: {
+      monthlyBudgetCents,
+      internalMeterEnforced: true,
+      providerBillingEnforced: false,
+    },
+  });
+  return billing;
+}
+
+export async function refreshScaleGate(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const gate = await assessScale(appwrite, input.workspaceId);
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "scale.evidence.refreshed",
+    targetType: "scale_gate",
+    targetId: gate.$id,
+    metadata: { recommendation: gate.recommendation, score: gate.score },
+  });
+  return gate;
+}
+
+export async function recordScaleDecision(input: {
+  workspaceId: string;
+  email: string;
+  decision: "hold" | "expand";
+  rationale: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const assessed = await assessScale(appwrite, input.workspaceId);
+  const blockers = JSON.parse(assessed.blockers || "[]") as string[];
+  if (
+    input.decision === "expand" &&
+    (assessed.recommendation !== "expand" || blockers.length)
+  ) {
+    throw new Error("Expansion cannot be authorized while scale blockers remain.");
+  }
+  const now = new Date().toISOString();
+  const path =
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.scaleGates}/rows/${scaleGateRowId(input.workspaceId)}`;
+  const gate = await appwrite.client.request<ScaleGateRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        status: "decision_recorded",
+        recommendation: input.decision,
+        expansionAuthorized: input.decision === "expand" ? 1 : 0,
+        decidedBy: input.email.toLowerCase(),
+        decisionRationale: input.rationale.trim().slice(0, 2000),
+        decidedAt: now,
+        updatedAt: now,
+      },
+    },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `scale.decision.${input.decision}`,
+    targetType: "scale_gate",
+    targetId: gate.$id,
+    metadata: {
+      score: gate.score,
+      blockers: blockers.length,
+      expansionPerformed: false,
+    },
+  });
+  return gate;
 }

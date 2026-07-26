@@ -58,7 +58,7 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -227,7 +227,40 @@ test("ships the Phase 8 Launchroom with truthful pilot and launch controls", asy
   assert.match(schema, /id: "pilot_exercises"/);
   assert.match(schema, /id: "support_rotations"/);
   assert.match(schema, /id: "launch_decisions"/);
-  assert.match(chrome, /Phase 8 live/);
+  assert.match(chrome, /active === "pilot"/);
+});
+
+test("ships the Phase 9 ScaleOps control room with evidence-bound expansion", async () => {
+  const [center, route, repository, orchestrator, schema, chrome] = await Promise.all([
+    readFile(new URL("../app/scale/ScaleOpsCenter.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/scale/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(center, /Scale the proof/);
+  assert.match(center, /Attestation truth/);
+  assert.match(center, /Run synthetic scale rehearsal/);
+  assert.match(center, /Billing truth/);
+  assert.match(center, /Authorize expansion/);
+  assert.match(route, /run_rehearsal/);
+  assert.match(route, /update_budget/);
+  assert.match(route, /record_decision/);
+  assert.match(repository, /awaiting_attestation/);
+  assert.match(repository, /providerBillingConnected: false/);
+  assert.match(repository, /Expansion cannot be authorized while scale blockers remain/);
+  assert.match(orchestrator, /path === "\/scale\/rehearse"/);
+  assert.match(orchestrator, /synthetic_scale_rehearsal/);
+  assert.match(orchestrator, /externalProviderRequests: 0/);
+  assert.match(schema, /id: "executor_registry"/);
+  assert.match(schema, /id: "telemetry_rollups"/);
+  assert.match(schema, /id: "incident_exercises"/);
+  assert.match(schema, /id: "billing_controls"/);
+  assert.match(schema, /id: "support_cases"/);
+  assert.match(schema, /id: "scale_gates"/);
+  assert.match(chrome, /Phase 9 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {
