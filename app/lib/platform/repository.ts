@@ -14,11 +14,18 @@ import {
   type EcosystemOverview,
   type EnterpriseConfigRecord,
   type EnterpriseOverview,
+  type JobRecord,
   type MembershipRecord,
+  type OperationsOverview,
   type PartnerSubmissionRecord,
+  type PilotProgramRecord,
   type PolicyPackRecord,
   type PolicyTemplateRecord,
   type ProductSignalRecord,
+  type ProviderAuthorizationRecord,
+  type RecoveryDrillRecord,
+  type UsageLedgerRecord,
+  type ValidationRunRecord,
 } from "./model";
 
 type RowList<T> = {
@@ -1512,4 +1519,439 @@ export async function savePartnerManifest(input: {
     },
   });
   return submission;
+}
+
+function pilotRowId(workspaceId: string) {
+  return enterpriseRowId("pilot", workspaceId);
+}
+
+async function ensureOperationsFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureEcosystemFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  await createIfMissing(
+    appwrite,
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.pilotPrograms}/rows`,
+    {
+      rowId: pilotRowId(workspace.workspaceId),
+      data: {
+        workspaceId: workspace.workspaceId,
+        name: "Northstar controlled pilot",
+        stage: "readiness",
+        status: "preparing",
+        targetUsers: 12,
+        ownerEmail: email.toLowerCase(),
+        successCriteria: JSON.stringify([
+          "100% of consequential actions approval-gated",
+          "Worker rehearsal passes with durable lease evidence",
+          "At least one provider authorization completed",
+          "Recovery tabletop reviewed by an owner",
+          "No critical security findings open",
+        ]),
+        checklist: JSON.stringify({
+          identityOwnerConfirmed: true,
+          approvalPolicyReviewed: true,
+          providerAuthorized: false,
+          workerRehearsalPassed: false,
+          recoveryTabletopCompleted: false,
+          cohortInvited: false,
+        }),
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    },
+  );
+  await appwrite.client.request(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 7,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+function sortedNewest<T extends { createdAt?: string; startedAt?: string; recordedAt?: string }>(
+  rows: T[],
+) {
+  return rows.sort((a, b) =>
+    String(b.createdAt || b.startedAt || b.recordedAt || "").localeCompare(
+      String(a.createdAt || a.startedAt || a.recordedAt || ""),
+    ),
+  );
+}
+
+export async function getOperationsOverview(
+  email: string,
+  displayName: string,
+): Promise<OperationsOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureOperationsFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view production operations.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const period = new Date().toISOString().slice(0, 7);
+  const [installations, authorizations, jobs, usage, drills, validations, pilot] =
+    await Promise.all([
+      appwrite.client.request<RowList<ConnectorInstallationRecord>>(
+        `${base}/${appwriteTables.connectorInstallations}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)], ttl: 5 },
+      ),
+      appwrite.client.request<RowList<ProviderAuthorizationRecord>>(
+        `${base}/${appwriteTables.providerAuthorizations}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)], ttl: 5 },
+      ),
+      appwrite.client.request<RowList<JobRecord>>(
+        `${base}/${appwriteTables.jobs}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(50)], ttl: 5 },
+      ),
+      appwrite.client.request<RowList<UsageLedgerRecord>>(
+        `${base}/${appwriteTables.usageLedger}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.equal("period", period),
+            query.limit(100),
+          ],
+          ttl: 5,
+        },
+      ),
+      appwrite.client.request<RowList<RecoveryDrillRecord>>(
+        `${base}/${appwriteTables.recoveryDrills}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("startedAt"),
+            query.limit(20),
+          ],
+          ttl: 5,
+        },
+      ),
+      appwrite.client.request<RowList<ValidationRunRecord>>(
+        `${base}/${appwriteTables.validationRuns}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("startedAt"),
+            query.limit(20),
+          ],
+          ttl: 5,
+        },
+      ),
+      appwrite.client.request<PilotProgramRecord>(
+        `${base}/${appwriteTables.pilotPrograms}/rows/${pilotRowId(workspace.workspaceId)}`,
+      ),
+    ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    installations: installations.rows,
+    authorizations: authorizations.rows,
+    jobs: sortedNewest(jobs.rows),
+    usage: sortedNewest(usage.rows),
+    drills: drills.rows,
+    validations: validations.rows,
+    pilot,
+  };
+}
+
+async function updatePilotChecklist(
+  appwrite: NonNullable<ReturnType<typeof getClient>>,
+  workspaceId: string,
+  key: string,
+  value: boolean,
+) {
+  const path =
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.pilotPrograms}/rows/${pilotRowId(workspaceId)}`;
+  const pilot = await appwrite.client.request<PilotProgramRecord>(path);
+  let checklist: Record<string, boolean> = {};
+  try {
+    const parsed = JSON.parse(pilot.checklist || "{}");
+    checklist =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed as Record<string, boolean>
+        : {};
+  } catch {
+    checklist = {};
+  }
+  checklist[key] = value;
+  const completed = Object.values(checklist).filter(Boolean).length;
+  const total = Object.keys(checklist).length;
+  return appwrite.client.request<PilotProgramRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        checklist: JSON.stringify(checklist),
+        stage: completed === total ? "launch_ready" : completed >= 4 ? "validation" : "readiness",
+        status: completed === total ? "ready" : "preparing",
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  });
+}
+
+export async function prepareProviderAuthorization(input: {
+  workspaceId: string;
+  installationId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const installation = await appwrite.client.request<ConnectorInstallationRecord>(
+    `${base}/${appwriteTables.connectorInstallations}/rows/${input.installationId}`,
+  );
+  if (installation.workspaceId !== input.workspaceId) {
+    throw new Error("This installation is not part of the workspace.");
+  }
+  const connector = await appwrite.client.request<ConnectorCatalogRecord>(
+    `${base}/${appwriteTables.connectorCatalog}/rows/${installation.connectorId}`,
+  );
+  const key = await sha256(`${input.workspaceId}:${input.installationId}`);
+  const rowId = `auth_${key.slice(0, 31)}`;
+  const now = new Date().toISOString();
+  let requestedScopes: string[] = [];
+  try {
+    const config = JSON.parse(installation.config || "{}");
+    requestedScopes = Array.isArray(config.requestedScopes)
+      ? config.requestedScopes.map(String).slice(0, 30)
+      : [];
+  } catch {
+    requestedScopes = [];
+  }
+  await createIfMissing(appwrite, `${base}/${appwriteTables.providerAuthorizations}/rows`, {
+    rowId,
+    data: {
+      workspaceId: input.workspaceId,
+      installationId: input.installationId,
+      provider: connector.name,
+      authType: connector.authType,
+      state: connector.authType.includes("OAuth")
+        ? "awaiting_oauth_consent"
+        : "awaiting_credentials",
+      scopes: JSON.stringify(requestedScopes),
+      authorizedBy: input.email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  const authorization = await appwrite.client.request<ProviderAuthorizationRecord>(
+    `${base}/${appwriteTables.providerAuthorizations}/rows/${rowId}`,
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "operations.authorization.prepared",
+    targetType: "provider_authorization",
+    targetId: rowId,
+    metadata: {
+      provider: connector.slug,
+      state: authorization.state,
+      credentialsStored: false,
+    },
+  });
+  return authorization;
+}
+
+export async function runWorkerRehearsal(input: {
+  workspaceId: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureOperationsFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "agents.run")) {
+    throw new Error("You do not have permission to run worker rehearsals.");
+  }
+  const now = new Date().toISOString();
+  const key = await sha256(`${input.workspaceId}:${input.email}:${now}:worker-rehearsal`);
+  const job = await appwrite.client.request<JobRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.jobs}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          type: "reliability.rehearsal",
+          payload: JSON.stringify({ suite: "worker_reliability", externalActions: false }),
+          state: "queued",
+          attempts: 0,
+          maxAttempts: 3,
+          idempotencyKey: `worker-rehearsal:${key.slice(0, 50)}`,
+          availableAt: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({ workspaceId: input.workspaceId, jobId: job.$id }),
+        async: false,
+        path: "/jobs/rehearse",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    job?: JobRecord;
+    validation?: ValidationRunRecord;
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Worker rehearsal returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.job ||
+    !response.validation
+  ) {
+    throw new Error(response?.error || execution.errors || "Worker rehearsal failed.");
+  }
+  const pilot = await updatePilotChecklist(
+    appwrite,
+    input.workspaceId,
+    "workerRehearsalPassed",
+    true,
+  );
+  return { job: response.job, validation: response.validation, pilot };
+}
+
+export async function runRecoveryTabletop(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const now = new Date().toISOString();
+  const drill = await appwrite.client.request<RecoveryDrillRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.recoveryDrills}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          kind: "tabletop",
+          status: "tabletop_completed",
+          scope: "Appwrite schema, private storage inventory, Functions, and Sites release provenance",
+          rpoMinutes: 60,
+          rtoMinutes: 240,
+          evidence: JSON.stringify({
+            schemaInventoryReviewed: true,
+            storageInventoryReviewed: true,
+            releaseProvenanceReviewed: true,
+            dataRestored: false,
+            targetValidatedByRestore: false,
+            note: "This is a tabletop rehearsal, not a data restoration test.",
+          }),
+          initiatedBy: input.email.toLowerCase(),
+          startedAt: now,
+          completedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  const usageKey = await sha256(`${input.workspaceId}:${drill.$id}:recovery`);
+  await appwrite.client.request(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.usageLedger}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          meter: "recovery_drill",
+          quantity: 1,
+          unit: "drill",
+          sourceType: "recovery_drill",
+          sourceId: drill.$id,
+          period: now.slice(0, 7),
+          costCents: 0,
+          idempotencyKey: `recovery:${usageKey.slice(0, 60)}`,
+          recordedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  const pilot = await updatePilotChecklist(
+    appwrite,
+    input.workspaceId,
+    "recoveryTabletopCompleted",
+    true,
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "operations.recovery_tabletop.completed",
+    targetType: "recovery_drill",
+    targetId: drill.$id,
+    metadata: { dataRestored: false, rpoMinutes: 60, rtoMinutes: 240 },
+  });
+  return { drill, pilot };
+}
+
+export async function markPilotCohortInvited(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const pilot = await updatePilotChecklist(
+    appwrite,
+    input.workspaceId,
+    "cohortInvited",
+    true,
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "operations.pilot.cohort_marked_invited",
+    targetType: "pilot_program",
+    targetId: pilot.$id,
+    metadata: { targetUsers: pilot.targetUsers, externalInvitationsSent: false },
+  });
+  return pilot;
 }

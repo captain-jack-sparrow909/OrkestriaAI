@@ -18,6 +18,11 @@ export const appwriteTables = {
   policyTemplates: "policy_templates",
   productSignals: "product_signals",
   partnerSubmissions: "partner_submissions",
+  providerAuthorizations: "provider_authorizations",
+  usageLedger: "usage_ledger",
+  recoveryDrills: "recovery_drills",
+  validationRuns: "validation_runs",
+  pilotPrograms: "pilot_programs",
 } as const;
 
 export type AppwriteServerConfig = {

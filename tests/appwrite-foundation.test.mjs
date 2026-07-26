@@ -34,6 +34,11 @@ test("declares unique Appwrite foundation resources", () => {
       "policy_templates",
       "product_signals",
       "partner_submissions",
+      "provider_authorizations",
+      "usage_ledger",
+      "recovery_drills",
+      "validation_runs",
+      "pilot_programs",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -54,6 +59,11 @@ test("keeps every queried field indexed", () => {
   const policyTemplates = tables.find((table) => table.id === "policy_templates");
   const productSignals = tables.find((table) => table.id === "product_signals");
   const partnerSubmissions = tables.find((table) => table.id === "partner_submissions");
+  const providerAuthorizations = tables.find((table) => table.id === "provider_authorizations");
+  const usageLedger = tables.find((table) => table.id === "usage_ledger");
+  const recoveryDrills = tables.find((table) => table.id === "recovery_drills");
+  const validationRuns = tables.find((table) => table.id === "validation_runs");
+  const pilotPrograms = tables.find((table) => table.id === "pilot_programs");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -68,6 +78,11 @@ test("keeps every queried field indexed", () => {
   assert.ok(policyTemplates.indexes.some((index) => index.key === "slug_unique"));
   assert.ok(productSignals.indexes.some((index) => index.attributes.includes("workspaceId")));
   assert.ok(partnerSubmissions.indexes.some((index) => index.key === "workspace_slug_unique"));
+  assert.ok(providerAuthorizations.indexes.some((index) => index.key === "workspace_installation_unique"));
+  assert.ok(usageLedger.indexes.some((index) => index.key === "idempotency_unique"));
+  assert.ok(recoveryDrills.indexes.some((index) => index.attributes.includes("startedAt")));
+  assert.ok(validationRuns.indexes.some((index) => index.key === "job_unique"));
+  assert.ok(pilotPrograms.indexes.some((index) => index.key === "workspace_unique"));
 });
 
 test("enforces approval and execution roles", () => {

@@ -258,6 +258,103 @@ export type EcosystemOverview = {
   submissions: PartnerSubmissionRecord[];
 };
 
+export type ProviderAuthorizationRecord = {
+  $id: string;
+  workspaceId: string;
+  installationId: string;
+  provider: string;
+  authType: string;
+  state: string;
+  scopes: string;
+  secretRef?: string;
+  expiresAt?: string;
+  lastCheckedAt?: string;
+  authorizedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type UsageLedgerRecord = {
+  $id: string;
+  workspaceId: string;
+  meter: string;
+  quantity: number;
+  unit: string;
+  sourceType: string;
+  sourceId: string;
+  period: string;
+  costCents: number;
+  idempotencyKey: string;
+  recordedAt: string;
+};
+
+export type RecoveryDrillRecord = {
+  $id: string;
+  workspaceId: string;
+  kind: string;
+  status: string;
+  scope: string;
+  rpoMinutes: number;
+  rtoMinutes: number;
+  evidence: string;
+  initiatedBy: string;
+  startedAt: string;
+  completedAt?: string;
+};
+
+export type ValidationRunRecord = {
+  $id: string;
+  workspaceId: string;
+  jobId: string;
+  suite: string;
+  status: string;
+  score: number;
+  checks: string;
+  initiatedBy: string;
+  startedAt: string;
+  completedAt?: string;
+};
+
+export type PilotProgramRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  stage: string;
+  status: string;
+  targetUsers: number;
+  ownerEmail: string;
+  successCriteria: string;
+  checklist: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type JobRecord = {
+  $id: string;
+  workspaceId: string;
+  type: string;
+  state: string;
+  attempts: number;
+  maxAttempts: number;
+  idempotencyKey: string;
+  availableAt: string;
+  leaseUntil?: string;
+  lastError?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OperationsOverview = {
+  workspaceId: string;
+  installations: ConnectorInstallationRecord[];
+  authorizations: ProviderAuthorizationRecord[];
+  jobs: JobRecord[];
+  usage: UsageLedgerRecord[];
+  drills: RecoveryDrillRecord[];
+  validations: ValidationRunRecord[];
+  pilot: PilotProgramRecord;
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

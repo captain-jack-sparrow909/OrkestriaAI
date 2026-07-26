@@ -115,6 +115,11 @@ Recommended additions for the product app:
 | `policy_templates` | Vertical policy marketplace | industry, framework, rules, version |
 | `product_signals` | Continuous product intelligence | evidence, score, recommendation, status |
 | `partner_submissions` | Private connector SDK drafts | manifest, validation, publisher, status |
+| `provider_authorizations` | External provider handshake state | scopes, auth type, state, expiry |
+| `usage_ledger` | Idempotent product metering | meter, quantity, source, period, cost |
+| `recovery_drills` | Recovery evidence and targets | kind, RPO, RTO, restored-data truth |
+| `validation_runs` | Worker and release gates | job, checks, score, evidence |
+| `pilot_programs` | Controlled rollout readiness | stage, cohort, criteria, checklist |
 | `security_findings` | Aegis findings | fingerprint, severity, CWE, fix, state |
 | `browser_sessions` | Vela sessions | state, domainPolicy, expiresAt |
 | `notifications` | User inbox | userId, type, readAt, entityRef |
@@ -254,6 +259,24 @@ publishing it. Every workspace mutation is authorized and audited in Appwrite.
 **Next phase:** Production operations — complete real provider authorization,
 durable execution workers, usage metering, recovery drills, load and security
 validation, and pilot onboarding.
+
+### Phase 7 — Production operations
+
+Operationalize provider authorization, durable execution, metering, recovery,
+release validation, and controlled pilot readiness.
+
+**Implementation status:** The Production Operations Center ships with five
+new Appwrite tables and a Function-backed worker rehearsal. A rehearsal job is
+persisted, exclusively leased, executed, validated, metered exactly once, and
+audited. Provider handshakes remain in `awaiting_credentials` or
+`awaiting_oauth_consent` until real credentials and provider confirmation
+exist. Recovery exercises are recorded as table-top evidence with
+`dataRestored: false`, so RPO/RTO targets are not misrepresented as restored
+data proof. Pilot readiness advances only as durable controls complete.
+
+**Next phase:** Live pilot and GA readiness — authorize real providers, onboard
+the first pilot cohort, exercise narrowly scoped production actions, establish
+support rotations, and make an evidence-based launch decision.
 
 ## Success metrics
 

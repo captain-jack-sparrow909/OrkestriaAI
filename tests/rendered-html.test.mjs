@@ -58,7 +58,7 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -169,7 +169,35 @@ test("ships the Phase 6 governed ecosystem exchange and partner manifest SDK", a
   assert.match(schema, /id: "policy_templates"/);
   assert.match(schema, /id: "product_signals"/);
   assert.match(schema, /id: "partner_submissions"/);
-  assert.match(chrome, /Phase 6 live/);
+  assert.match(chrome, /active === "ecosystem"/);
+});
+
+test("ships the Phase 7 production operations center and durable worker rehearsal", async () => {
+  const [center, route, repository, orchestrator, schema, chrome] = await Promise.all([
+    readFile(new URL("../app/operations/OperationsCenter.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/operations/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(center, /Practice the failure/);
+  assert.match(center, /Authorization truth/);
+  assert.match(center, /Run worker rehearsal/);
+  assert.match(center, /No data restored/);
+  assert.match(route, /run_worker_rehearsal/);
+  assert.match(repository, /awaiting_oauth_consent/);
+  assert.match(repository, /dataRestored: false/);
+  assert.match(orchestrator, /path === "\/jobs\/rehearse"/);
+  assert.match(orchestrator, /Exclusive queue lease/);
+  assert.match(orchestrator, /worker-rehearsal:/);
+  assert.match(schema, /id: "provider_authorizations"/);
+  assert.match(schema, /id: "usage_ledger"/);
+  assert.match(schema, /id: "recovery_drills"/);
+  assert.match(schema, /id: "validation_runs"/);
+  assert.match(schema, /id: "pilot_programs"/);
+  assert.match(chrome, /Phase 7 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

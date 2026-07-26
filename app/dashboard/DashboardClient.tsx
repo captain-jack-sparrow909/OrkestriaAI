@@ -170,6 +170,7 @@ export function DashboardClient({
           ))}
           <Link href="/enterprise"><i className="enterprise-nav-mark">◇</i><span>Enterprise</span></Link>
           <Link href="/ecosystem"><i className="ecosystem-nav-mark">✦</i><span>Ecosystem</span></Link>
+          <Link href="/operations"><i className="operations-nav-mark">◉</i><span>Operations</span></Link>
           <span className="app-nav-label">Agents</span>
           {[
             ["V", "Vela", "violet", "/vela"],
