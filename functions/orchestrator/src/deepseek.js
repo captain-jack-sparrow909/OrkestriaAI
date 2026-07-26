@@ -2,12 +2,13 @@ const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions";
 const allowedAgents = new Set(["vela", "loom", "tempo", "helio", "aegis"]);
 const allowedRisks = new Set(["low", "medium", "high", "critical"]);
 const allowedSeverities = new Set(["info", "low", "medium", "high", "critical"]);
+const allowedEfforts = new Set(["low", "medium", "high"]);
 
 const agentInstructions = {
   vela: "Focus on browser navigation, evidence gathering, domain boundaries, and checkpoints before forms, submissions, purchases, or account changes.",
   loom: "Focus on triggers, transformations, integrations, retries, idempotency, and human checkpoints before consequential external actions.",
   tempo: "Correlate deployments, alerts, logs, and infrastructure changes. State uncertainty clearly, surface concrete evidence as findings, and recommend reversible remediation before any production change.",
-  helio: "Focus on cost evidence, utilization, ownership, savings estimates, implementation effort, and operational risk.",
+  helio: "Analyze only supplied cost and utilization evidence. Identify anomalies, idle resources, rightsizing, scheduling, storage, and commitment opportunities. Use conservative monthly savings, avoid double counting, express money as numeric currency units, include confidence and effort, and never claim savings are realized.",
   aegis: "Review the supplied code or configuration for concrete vulnerabilities and insecure patterns. Put each supported issue in findings with exact evidence and a practical recommendation. Do not invent absent code.",
 };
 
@@ -28,6 +29,20 @@ Use this exact JSON shape:
       "severity": "info | low | medium | high | critical",
       "evidence": "short evidence grounded in supplied context",
       "recommendation": "specific safe next step"
+    }
+  ],
+  "opportunities": [
+    {
+      "resourceId": "provider resource identifier",
+      "resourceName": "human readable resource",
+      "category": "idle | rightsizing | scheduling | storage | commitment | anomaly",
+      "currentMonthlyCost": 1000,
+      "estimatedMonthlySavings": 250,
+      "confidence": 80,
+      "effort": "low | medium | high",
+      "risk": "low | medium | high | critical",
+      "evidence": "cost and utilization evidence",
+      "recommendation": "specific next step"
     }
   ],
   "steps": [
@@ -56,6 +71,45 @@ export function validatePlan(input) {
         recommendation: String(finding?.recommendation || "").slice(0, 1600),
       }))
     : [];
+  const seenResources = new Set();
+  const opportunities = Array.isArray(input.opportunities)
+    ? input.opportunities.slice(0, 20).flatMap((opportunity, index) => {
+        const resourceId = String(
+          opportunity?.resourceId || `resource-${index + 1}`,
+        ).slice(0, 255);
+        if (seenResources.has(resourceId)) return [];
+        seenResources.add(resourceId);
+
+        const currentMonthlyCost = Math.min(
+          10_000_000,
+          Math.max(0, Number(opportunity?.currentMonthlyCost) || 0),
+        );
+        return [{
+          resourceId,
+          resourceName: String(
+            opportunity?.resourceName || `Resource ${index + 1}`,
+          ).slice(0, 255),
+          category: String(opportunity?.category || "rightsizing").slice(0, 64),
+          currentMonthlyCost,
+          estimatedMonthlySavings: Math.min(
+            currentMonthlyCost,
+            Math.max(0, Number(opportunity?.estimatedMonthlySavings) || 0),
+          ),
+          confidence: Math.min(
+            100,
+            Math.max(0, Math.round(Number(opportunity?.confidence) || 0)),
+          ),
+          effort: allowedEfforts.has(opportunity?.effort)
+            ? opportunity.effort
+            : "medium",
+          risk: allowedRisks.has(opportunity?.risk)
+            ? opportunity.risk
+            : "medium",
+          evidence: String(opportunity?.evidence || "").slice(0, 2000),
+          recommendation: String(opportunity?.recommendation || "").slice(0, 2000),
+        }];
+      }).slice(0, 12)
+    : [];
   const steps = Array.isArray(input.steps)
     ? input.steps.slice(0, 12).map((step, index) => ({
         title: String(step?.title || `Step ${index + 1}`).slice(0, 160),
@@ -77,6 +131,7 @@ export function validatePlan(input) {
     approvalRequired,
     rationale: String(input.rationale || "The plan was generated from the supplied goal.").slice(0, 4000),
     findings,
+    opportunities,
     steps,
   };
 }
@@ -121,7 +176,7 @@ export async function createAgentPlan({ agent, goal, context, userId }) {
         model: process.env.DEEPSEEK_MODEL || "deepseek-v4-flash",
         thinking: { type: "disabled" },
         response_format: { type: "json_object" },
-        max_tokens: 1800,
+        max_tokens: 2400,
         user_id: await opaqueUserId(userId),
         messages: [
           { role: "system", content: systemPrompt },

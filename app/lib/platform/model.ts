@@ -39,12 +39,26 @@ export type AgentFinding = {
   recommendation: string;
 };
 
+export type CostOpportunity = {
+  resourceId: string;
+  resourceName: string;
+  category: string;
+  currentMonthlyCost: number;
+  estimatedMonthlySavings: number;
+  confidence: number;
+  effort: "low" | "medium" | "high";
+  risk: RiskLevel;
+  evidence: string;
+  recommendation: string;
+};
+
 export type AgentPlan = {
   summary: string;
   risk: RiskLevel;
   approvalRequired: boolean;
   rationale: string;
   findings: AgentFinding[];
+  opportunities: CostOpportunity[];
   steps: AgentPlanStep[];
 };
 
@@ -59,6 +73,11 @@ export type AgentPlanResult = {
   };
   plan: AgentPlan;
   approval: ApprovalRecord | null;
+  costAnalysis?: {
+    $id: string;
+    currentSpendCents: number;
+    potentialSavingsCents: number;
+  } | null;
   requestId: string;
 };
 

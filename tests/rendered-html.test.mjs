@@ -58,7 +58,7 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/aegis"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -100,6 +100,24 @@ test("ships the Phase 3 Tempo and Aegis studios with evidence uploads", async ()
   assert.match(uploadRoute, /workspace-uploads/);
   assert.match(deepseek, /surface concrete evidence as findings/);
   assert.match(deepseek, /Do not invent absent code/);
+});
+
+test("ships the Phase 4 Helio studio with durable conservative savings", async () => {
+  const [helio, orchestrator, schema, deepseek] = await Promise.all([
+    readFile(new URL("../app/helio/HelioStudio.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/deepseek.js", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(helio, /Analyze cloud spend/);
+  assert.match(helio, /No savings theater/);
+  assert.match(orchestrator, /cost_analyses/);
+  assert.match(orchestrator, /savings_opportunities/);
+  assert.match(schema, /id: "cost_analyses"/);
+  assert.match(schema, /id: "savings_opportunities"/);
+  assert.match(deepseek, /avoid double counting/);
+  assert.match(deepseek, /Math\.min\(\s*currentMonthlyCost/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

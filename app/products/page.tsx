@@ -65,6 +65,7 @@ const products = [
       ["↓", "Rightsizing opportunities", "$8.7k"],
       ["◇", "Commitment optimization", "$10.3k"],
     ],
+    href: "/helio",
   },
   {
     id: "aegis",

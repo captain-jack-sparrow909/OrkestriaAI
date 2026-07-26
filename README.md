@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes eight TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes ten TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,11 +62,12 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 3 adds Tempo Operations Studio and Aegis Security Studio to Vela and
-Loom. Tempo correlates deployments, alerts, logs, traces, and infrastructure
-changes. Aegis produces evidence-grounded code and configuration findings.
-Both accept durable evidence uploads and route remediation through the shared
-run, audit, rate-limit, and approval controls.
+Phase 4 adds Helio Cloud Financial Intelligence to Vela, Loom, Tempo, and
+Aegis. Helio ingests billing and utilization evidence, identifies cost
+anomalies and realistic optimization opportunities, persists each analysis and
+recommendation, and keeps identified, approved, and realized savings distinct.
+Every consequential cloud change remains behind the shared approval controls.
 
-**Next phase:** Helio — cloud-cost intelligence, anomaly detection, and
-verified savings.
+**Next phase:** Enterprise scale — SAML/SCIM, custom roles, regional data
+residency, private networking, policy packs, compliance exports, and enterprise
+SLAs.

@@ -14,7 +14,18 @@ test("declares unique Appwrite foundation resources", () => {
   assert.equal(database.id, "orkestria");
   assert.deepEqual(
     tables.map((table) => table.id),
-    ["workspaces", "memberships", "runs", "approvals", "audit_events", "jobs", "files", "rate_limits"],
+    [
+      "workspaces",
+      "memberships",
+      "runs",
+      "approvals",
+      "audit_events",
+      "jobs",
+      "files",
+      "rate_limits",
+      "cost_analyses",
+      "savings_opportunities",
+    ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
   assert.equal(new Set(buckets.map((bucket) => bucket.id)).size, buckets.length);
@@ -108,4 +119,46 @@ test("normalizes bounded operational and security findings", () => {
   assert.equal(plan.findings[1].severity, "medium");
   assert.equal(plan.findings[0].evidence.length, 1600);
   assert.equal(plan.findings[0].recommendation.length, 1600);
+});
+
+test("keeps Helio savings conservative, bounded, and deduplicated", () => {
+  const plan = validatePlan({
+    summary: "Review supplied cloud costs",
+    risk: "low",
+    approvalRequired: false,
+    opportunities: [
+      {
+        resourceId: "i-staging-api",
+        resourceName: "Staging API",
+        category: "idle",
+        currentMonthlyCost: 400,
+        estimatedMonthlySavings: 900,
+        confidence: 140,
+        effort: "unsupported",
+        risk: "low",
+        evidence: "Average utilization is 3%.",
+        recommendation: "Confirm the owner and schedule the instance.",
+      },
+      {
+        resourceId: "i-staging-api",
+        currentMonthlyCost: 400,
+        estimatedMonthlySavings: 100,
+      },
+      ...Array.from({ length: 14 }, (_, index) => ({
+        resourceId: `resource-${index}`,
+        currentMonthlyCost: 100,
+        estimatedMonthlySavings: 25,
+      })),
+    ],
+    steps: [],
+  });
+
+  assert.equal(plan.opportunities.length, 12);
+  assert.equal(plan.opportunities[0].estimatedMonthlySavings, 400);
+  assert.equal(plan.opportunities[0].confidence, 100);
+  assert.equal(plan.opportunities[0].effort, "medium");
+  assert.equal(
+    new Set(plan.opportunities.map((opportunity) => opportunity.resourceId)).size,
+    plan.opportunities.length,
+  );
 });

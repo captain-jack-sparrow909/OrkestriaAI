@@ -104,7 +104,8 @@ Recommended additions for the product app:
 | `audit_events` | Immutable activity record | actor, action, target, result, metadata |
 | `files` | Storage metadata | bucketId, fileId, ownerId, scanStatus, size |
 | `incidents` | Tempo incidents | service, severity, cause, evidence, state |
-| `cost_findings` | Helio recommendations | resource, savings, confidence, risk |
+| `cost_analyses` | Helio portfolio analysis | provider, period, spend, forecast, savings |
+| `savings_opportunities` | Helio recommendations | resource, savings, confidence, risk, status |
 | `security_findings` | Aegis findings | fingerprint, severity, CWE, fix, state |
 | `browser_sessions` | Vela sessions | state, domainPolicy, expiresAt |
 | `notifications` | User inbox | userId, type, readAt, entityRef |
@@ -197,6 +198,15 @@ shared operational context.
 
 Add billing/usage ingestion, normalization, ownership mapping, savings
 calculation, anomaly detection, and realized-savings tracking.
+
+**Implementation status:** Helio ships as an authenticated cloud financial
+intelligence studio on the shared Appwrite orchestrator. It ingests AWS, Azure,
+Google Cloud, or multi-cloud billing evidence; quantifies evidence-grounded
+opportunities with confidence, effort, and operational risk; deduplicates
+resources; and caps every estimate at the resource's current monthly cost.
+Analyses and opportunity records are durable, while the UI clearly separates
+identified, approved, and realized value. No cloud resource is changed without
+human approval.
 
 **Next phase:** Enterprise scale — harden governance, identity, networking, and
 regional controls for larger organizations.

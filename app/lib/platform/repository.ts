@@ -34,6 +34,7 @@ export const availableAgents = new Set<AgentKey>([
   "vela",
   "loom",
   "tempo",
+  "helio",
   "aegis",
 ]);
 
@@ -86,8 +87,8 @@ export async function ensureWorkspaceForUser(
         region: "global",
         status: "active",
         settings: JSON.stringify({
-          phase: 3,
-          agents: ["vela", "loom", "tempo", "aegis"],
+          phase: 4,
+          agents: ["vela", "loom", "tempo", "helio", "aegis"],
         }),
         createdBy: email.toLowerCase(),
         createdAt: now,

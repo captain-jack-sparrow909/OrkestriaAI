@@ -26,6 +26,24 @@ function parseBody(req) {
   }
 }
 
+function parseContext(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value;
+  }
+  try {
+    return safeJsonObject(JSON.parse(String(value || "{}")));
+  } catch {
+    return {};
+  }
+}
+
+function moneyToCents(value) {
+  return Math.min(
+    1_000_000_000,
+    Math.max(0, Math.round((Number(value) || 0) * 100)),
+  );
+}
+
 async function membershipFor(tables, workspaceId, userId) {
   const result = await tables.listRows({
     databaseId: DATABASE_ID,
@@ -59,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "tempo-aegis",
+      phase: "helio",
       requestId,
     });
   }
@@ -264,6 +282,75 @@ async function orchestrator({ req, res, log, error }) {
         });
       }
 
+      let costAnalysis = null;
+      const savingsOpportunities = [];
+      if (agent === "helio") {
+        const context = parseContext(body.context);
+        const opportunities = generated.plan.opportunities || [];
+        const potentialSavings = opportunities.reduce(
+          (total, opportunity) =>
+            total + moneyToCents(opportunity.estimatedMonthlySavings),
+          0,
+        );
+
+        costAnalysis = await tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "cost_analyses",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            runId: run.$id,
+            provider: String(context.provider || "multi-cloud").slice(0, 32),
+            billingPeriod: String(context.billingPeriod || "current").slice(0, 32),
+            currency: String(context.currency || "USD").toUpperCase().slice(0, 8),
+            currentSpendCents: moneyToCents(context.currentMonthlySpend),
+            forecastSpendCents: moneyToCents(context.forecastMonthlySpend),
+            potentialSavingsCents: potentialSavings,
+            anomalyCount: Math.min(generated.plan.findings?.length || 0, 1000),
+            opportunityCount: opportunities.length,
+            metadata: JSON.stringify({
+              model: generated.model,
+              requestId,
+              sourceRows: Math.max(0, Math.min(Number(context.sourceRows) || 0, 1_000_000)),
+            }),
+            createdAt: completedAt,
+          },
+          permissions: [],
+        });
+
+        for (const opportunity of opportunities) {
+          const row = await tables.createRow({
+            databaseId: DATABASE_ID,
+            tableId: "savings_opportunities",
+            rowId: ID.unique(),
+            data: {
+              workspaceId,
+              analysisId: costAnalysis.$id,
+              runId: run.$id,
+              resourceId: opportunity.resourceId,
+              resourceName: opportunity.resourceName,
+              category: opportunity.category,
+              status: ["high", "critical"].includes(opportunity.risk)
+                ? "approval_required"
+                : "proposed",
+              risk: opportunity.risk,
+              effort: opportunity.effort,
+              confidence: opportunity.confidence,
+              currentMonthlyCostCents: moneyToCents(opportunity.currentMonthlyCost),
+              estimatedMonthlySavingsCents: moneyToCents(
+                opportunity.estimatedMonthlySavings,
+              ),
+              realizedSavingsCents: 0,
+              evidence: opportunity.evidence,
+              recommendation: opportunity.recommendation,
+              createdAt: completedAt,
+            },
+            permissions: [],
+          });
+          savingsOpportunities.push(row);
+        }
+      }
+
       await tables.createRow({
         databaseId: DATABASE_ID,
         tableId: "audit_events",
@@ -299,7 +386,14 @@ async function orchestrator({ req, res, log, error }) {
         durationMs: Date.now() - startedAt,
       });
 
-      return res.json({ run: updatedRun, plan: generated.plan, approval, requestId });
+      return res.json({
+        run: updatedRun,
+        plan: generated.plan,
+        approval,
+        costAnalysis,
+        savingsOpportunities,
+        requestId,
+      });
     }
 
     return res.json({ error: "Route not found", requestId }, 404);

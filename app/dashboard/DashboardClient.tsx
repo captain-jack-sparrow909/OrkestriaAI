@@ -173,14 +173,10 @@ export function DashboardClient({
             ["V", "Vela", "violet", "/vela"],
             ["L", "Loom", "lime", "/loom"],
             ["T", "Tempo", "orange", "/tempo"],
+            ["H", "Helio", "cyan", "/helio"],
             ["Æ", "Aegis", "pink", "/aegis"],
           ].map(([mark, name, color, href]) => (
             <Link href={href} key={name}><i className={`agent-nav-mark ${color}`}>{mark}</i><span>{name}</span><span className="agent-online" /></Link>
-          ))}
-          {[
-            ["H", "Helio", "cyan"],
-          ].map(([mark, name, color]) => (
-            <span className="agent-nav-disabled" key={name}><i className={`agent-nav-mark ${color}`}>{mark}</i><span>{name}</span><small>Soon</small></span>
           ))}
         </nav>
         <div className="sidebar-bottom">

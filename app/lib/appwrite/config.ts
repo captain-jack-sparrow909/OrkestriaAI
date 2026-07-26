@@ -7,6 +7,8 @@ export const appwriteTables = {
   jobs: "jobs",
   files: "files",
   rateLimits: "rate_limits",
+  costAnalyses: "cost_analyses",
+  savingsOpportunities: "savings_opportunities",
 } as const;
 
 export type AppwriteServerConfig = {
