@@ -1,7 +1,14 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  APPWRITE_SESSION_COOKIE,
+  getAppwriteAccount,
+} from "./lib/appwrite/auth";
+
+export type AuthenticationProvider = "appwrite" | "chatgpt";
 
 export type ChatGPTUser = {
+  authProvider: AuthenticationProvider;
   displayName: string;
   email: string;
   fullName: string | null;
@@ -17,6 +24,24 @@ const SIGN_OUT_PATH = "/signout-with-chatgpt";
 const CALLBACK_PATH = "/callback";
 
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
+  if (getAuthenticationProvider() === "appwrite") {
+    const cookieStore = await cookies();
+    const session = cookieStore.get(APPWRITE_SESSION_COOKIE)?.value;
+    if (!session) return null;
+
+    try {
+      const account = await getAppwriteAccount(session);
+      return {
+        authProvider: "appwrite",
+        displayName: account.name || account.email,
+        email: account.email,
+        fullName: account.name || null,
+      };
+    } catch {
+      return null;
+    }
+  }
+
   const requestHeaders = await headers();
   const email = requestHeaders.get(USER_EMAIL_HEADER);
   if (!email) return null;
@@ -29,6 +54,7 @@ export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
       : null;
 
   return {
+    authProvider: "chatgpt",
     displayName: fullName ?? email,
     email,
     fullName,
@@ -41,7 +67,20 @@ export async function requireChatGPTUser(
   const user = await getChatGPTUser();
   if (user) return user;
 
+  if (getAuthenticationProvider() === "appwrite") {
+    redirect(
+      `/sign-in?return_to=${encodeURIComponent(safeRelativeReturnPath(returnTo))}`,
+    );
+  }
+
   redirect(chatGPTSignInPath(returnTo));
+}
+
+export function getAuthenticationProvider(): AuthenticationProvider {
+  return process.env.ORK_AUTH_PROVIDER === "appwrite" ||
+    Boolean(process.env.APPWRITE_SITE_ID)
+    ? "appwrite"
+    : "chatgpt";
 }
 
 export function chatGPTSignInPath(returnTo: string): string {

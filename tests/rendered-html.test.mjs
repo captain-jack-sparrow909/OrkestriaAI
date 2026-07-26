@@ -83,6 +83,29 @@ test("offers working sign-in and account-creation handoffs", async () => {
   assert.doesNotMatch(authenticatedHtml, /href="\/signin-with-chatgpt/);
 });
 
+test("switches to native Appwrite authentication on Appwrite Sites", async () => {
+  const previousProvider = process.env.ORK_AUTH_PROVIDER;
+  process.env.ORK_AUTH_PROVIDER = "appwrite";
+  try {
+    const signIn = await render("/sign-in");
+    const signInHtml = await signIn.text();
+    assert.match(signInHtml, /Sign in to OrkestriaAI/);
+    assert.match(signInHtml, /type="email"/);
+    assert.match(signInHtml, /type="password"/);
+    assert.doesNotMatch(signInHtml, /href="\/signin-with-chatgpt/);
+
+    const protectedPage = await render("/dashboard");
+    assert.ok([302, 303, 307, 308].includes(protectedPage.status));
+    assert.match(
+      protectedPage.headers.get("location") ?? "",
+      /\/sign-in\?return_to=%2Fdashboard$/,
+    );
+  } finally {
+    if (previousProvider === undefined) delete process.env.ORK_AUTH_PROVIDER;
+    else process.env.ORK_AUTH_PROVIDER = previousProvider;
+  }
+});
+
 test("protects the command center behind authenticated identity", async () => {
   for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust"]) {
     const response = await render(path);

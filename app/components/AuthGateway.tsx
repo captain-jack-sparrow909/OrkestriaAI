@@ -1,17 +1,21 @@
 import Link from "next/link";
 import {
   chatGPTSignInPath,
+  type AuthenticationProvider,
   type ChatGPTUser,
 } from "../chatgpt-auth";
+import { AppwriteAuthForm } from "./AppwriteAuthForm";
 
 type AuthGatewayProps = {
   mode: "sign-in" | "sign-up";
+  provider: AuthenticationProvider;
   user: ChatGPTUser | null;
 };
 
-export function AuthGateway({ mode, user }: AuthGatewayProps) {
+export function AuthGateway({ mode, provider, user }: AuthGatewayProps) {
   const creatingAccount = mode === "sign-up";
   const authenticationPath = chatGPTSignInPath("/dashboard");
+  const usingAppwrite = provider === "appwrite";
 
   return (
     <main className="auth-page">
@@ -75,7 +79,11 @@ export function AuthGateway({ mode, user }: AuthGatewayProps) {
           <p>
             {user
               ? `Signed in as ${user.email}.`
-              : creatingAccount
+              : usingAppwrite && creatingAccount
+                ? "Create your OrkestriaAI identity with Appwrite. Your secure session, workspace role, and records stay in the same trusted backend."
+                : usingAppwrite
+                  ? "Sign in with your OrkestriaAI account. Appwrite verifies your identity and returns you to the protected command center."
+                  : creatingAccount
                 ? "Use your ChatGPT identity to create secure access to OrkestriaAI. New ChatGPT users can create an account during the next step."
                 : "Use the ChatGPT identity connected to your OrkestriaAI workspace. You will return here automatically after verification."}
           </p>
@@ -84,6 +92,8 @@ export function AuthGateway({ mode, user }: AuthGatewayProps) {
             <Link className="button button-primary auth-submit" href="/dashboard">
               Open command center <span aria-hidden="true">↗</span>
             </Link>
+          ) : usingAppwrite ? (
+            <AppwriteAuthForm mode={mode} />
           ) : (
             <a
               className="button button-primary auth-submit"
@@ -100,7 +110,9 @@ export function AuthGateway({ mode, user }: AuthGatewayProps) {
             <div>
               <span>01</span>
               <p>
-                <strong>Verify with ChatGPT</strong>
+                <strong>
+                  {usingAppwrite ? "Verify with Appwrite" : "Verify with ChatGPT"}
+                </strong>
                 <small>Sign in or create an account securely.</small>
               </p>
             </div>
@@ -117,10 +129,15 @@ export function AuthGateway({ mode, user }: AuthGatewayProps) {
           <div className="auth-security-note">
             <span>✓</span>
             <p>
-              <strong>No separate OrkestriaAI password</strong>
+              <strong>
+                {usingAppwrite
+                  ? "Protected Appwrite session"
+                  : "No separate OrkestriaAI password"}
+              </strong>
               <small>
-                Authentication is handled by ChatGPT. Appwrite enforces
-                workspace roles and protects durable records after sign-in.
+                {usingAppwrite
+                  ? "Appwrite secures your identity, session, workspace roles, and durable records."
+                  : "Authentication is handled by ChatGPT. Appwrite enforces workspace roles and protects durable records after sign-in."}
               </small>
             </p>
           </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ChatGPTUser } from "../chatgpt-auth";
+import { SignOutControl } from "./SignOutControl";
 
 const agents = [
   { key: "vela", name: "Vela", mark: "V", color: "violet", href: "/vela", live: true },
@@ -87,7 +88,7 @@ export function WorkspaceChrome({
         <div className="sidebar-bottom">
           <Link href="/enterprise">⌾ <span>Governance</span></Link>
           <Link href="/ecosystem">⚙ <span>Connections</span></Link>
-          <a href="/signout-with-chatgpt?return_to=%2F">↪ <span>Sign out</span></a>
+          <SignOutControl provider={user.authProvider} />
         </div>
       </aside>
 

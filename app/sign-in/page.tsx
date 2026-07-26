@@ -1,4 +1,7 @@
-import { getChatGPTUser } from "../chatgpt-auth";
+import {
+  getAuthenticationProvider,
+  getChatGPTUser,
+} from "../chatgpt-auth";
 import { AuthGateway } from "../components/AuthGateway";
 
 export const dynamic = "force-dynamic";
@@ -11,5 +14,11 @@ export const metadata = {
 export default async function SignInPage() {
   const user = await getChatGPTUser();
 
-  return <AuthGateway mode="sign-in" user={user} />;
+  return (
+    <AuthGateway
+      mode="sign-in"
+      provider={getAuthenticationProvider()}
+      user={user}
+    />
+  );
 }
