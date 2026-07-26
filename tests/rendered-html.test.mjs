@@ -107,7 +107,7 @@ test("switches to native Appwrite authentication on Appwrite Sites", async () =>
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence", "/ensemble", "/continuum", "/meridian", "/keystone"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence", "/ensemble", "/continuum", "/meridian", "/keystone", "/concord"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -343,7 +343,7 @@ test("ships the Phase 10 TrustGrid with truthful continuous trust and rollout ga
   assert.match(schema, /id: "service_health_updates"/);
   assert.match(schema, /id: "compliance_automations"/);
   assert.match(schema, /id: "regional_rollout_gates"/);
-  assert.match(chrome, /Phase 15 live/);
+  assert.match(chrome, /Phase 16 live/);
 });
 
 test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () => {
@@ -378,7 +378,7 @@ test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () =>
   assert.match(schema, /id: "customer_outcomes"/);
   assert.match(schema, /id: "policy_recommendations"/);
   assert.match(schema, /id: "autonomy_decisions"/);
-  assert.match(chrome, /Phase 15 live/);
+  assert.match(chrome, /Phase 16 live/);
 });
 
 test("ships Phase 12 Ensemble with bounded collaborative decisioning", async () => {
@@ -415,7 +415,7 @@ test("ships Phase 12 Ensemble with bounded collaborative decisioning", async () 
   assert.match(schema, /id: "executive_briefs"/);
   assert.match(schema, /id: "executive_decisions"/);
   assert.match(chrome, /active === "ensemble"/);
-  assert.match(chrome, /Phase 15 live/);
+  assert.match(chrome, /Phase 16 live/);
 });
 
 test("ships Phase 13 Continuum with truthful organizational memory and digital twins", async () => {
@@ -453,7 +453,7 @@ test("ships Phase 13 Continuum with truthful organizational memory and digital t
   assert.match(schema, /id: "impact_forecasts"/);
   assert.match(schema, /id: "memory_promotions"/);
   assert.match(chrome, /active === "continuum"/);
-  assert.match(chrome, /Phase 15 live/);
+  assert.match(chrome, /Phase 16 live/);
 });
 
 test("ships Phase 14 Meridian with evidence-gated portfolio intelligence", async () => {
@@ -491,7 +491,7 @@ test("ships Phase 14 Meridian with evidence-gated portfolio intelligence", async
   assert.match(schema, /id: "portfolio_forecasts"/);
   assert.match(schema, /id: "investment_decisions"/);
   assert.match(chrome, /active === "meridian"/);
-  assert.match(chrome, /Phase 15 live/);
+  assert.match(chrome, /Phase 16 live/);
 });
 
 test("ships Phase 15 Keystone with evidence-gated execution and benefits", async () => {
@@ -533,7 +533,49 @@ test("ships Phase 15 Keystone with evidence-gated execution and benefits", async
   assert.match(schema, /id: "execution_variances"/);
   assert.match(schema, /id: "corrective_actions"/);
   assert.match(chrome, /active === "keystone"/);
-  assert.match(chrome, /Phase 15 live/);
+  assert.match(chrome, /Phase 16 live/);
+});
+
+test("ships Phase 16 Concord with bounded federated enterprise command", async () => {
+  const [concord, route, repository, orchestrator, schema, chrome] =
+    await Promise.all([
+      readFile(new URL("../app/concord/ConcordCommand.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/concord/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+      readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+      readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+      readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+    ]);
+
+  assert.match(concord, /One enterprise/);
+  assert.match(concord, /Workspace constellation/);
+  assert.match(concord, /Authority ledger/);
+  assert.match(concord, /Policy lattice/);
+  assert.match(concord, /Enterprise operating rollup/);
+  assert.match(concord, /Privacy-safe benchmark lens/);
+  assert.match(concord, /Executive decision package/);
+  assert.match(route, /propose_workspace/);
+  assert.match(route, /propose_authority/);
+  assert.match(route, /draft_policy/);
+  assert.match(route, /run_rollup/);
+  assert.match(route, /create_package/);
+  assert.match(route, /decide_package/);
+  assert.match(repository, /proposed_unverified_no_access/);
+  assert.match(repository, /Executive package cannot be approved while evidence blockers remain/);
+  assert.match(repository, /"approved_no_execution"/);
+  assert.match(orchestrator, /path === "\/federation\/rollup"/);
+  assert.match(orchestrator, /deterministic_federation_fixture/);
+  assert.match(orchestrator, /otherMemberWorkspacesQueried: false/);
+  assert.match(orchestrator, /rawTenantDataExposed: 0/);
+  assert.match(schema, /id: "enterprise_federations"/);
+  assert.match(schema, /id: "federation_workspaces"/);
+  assert.match(schema, /id: "delegated_authorities"/);
+  assert.match(schema, /id: "federated_policy_bindings"/);
+  assert.match(schema, /id: "enterprise_rollups"/);
+  assert.match(schema, /id: "privacy_benchmarks"/);
+  assert.match(schema, /id: "executive_decision_packages"/);
+  assert.match(chrome, /active === "concord"/);
+  assert.match(chrome, /Phase 16 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

@@ -456,6 +456,36 @@ external execution.
 rollups, delegated governance, cross-workspace policy, privacy-safe benchmarks,
 and evidence-backed executive decision packages.
 
+### Phase 16 — Federated Enterprise Command
+
+Give enterprise leaders a unified command surface without quietly crossing
+workspace boundaries or turning synthetic comparison data into tenant truth.
+
+**Implementation status:** Concord ships as an authenticated federated
+enterprise command surface backed by seven new Appwrite tables. The current
+workspace is the verified anchor, while every additional workspace begins as a
+no-access proposal with no data-sharing consent. Delegated mandates remain
+inactive until independently verified; federated policies remain advisory,
+unverified, and unapplied. A Function-backed rollup reads only durable records
+from the authorized anchor workspace and explicitly does not query proposed or
+connected member workspaces, live models, or external systems. Three synthetic
+reference ranges use no real tenant records, expose no raw tenant data, and do
+not claim k-anonymity, differential privacy, or completed privacy review.
+Executive approval remains blocked until the federation, at least two workspace
+members, delegated authority, policy, rollup, and privacy benchmarks are
+decision-grade. Holding changes nothing; even a valid approval records intent
+only and never applies policy, activates delegation, creates a financial
+commitment, or executes an external action.
+
+**Next phase:** ModelOps, Evaluation & AI Quality Governance — add model and
+prompt versioning, golden evaluation suites, drift signals, cost-quality
+routing, release gates, and human-approved model promotion.
+
+**Final phase:** Phase 18 — General Availability Hardening & Launch: complete
+load and resilience testing, security review, connector certification,
+operational documentation, onboarding, launch controls, and production
+readiness evidence.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

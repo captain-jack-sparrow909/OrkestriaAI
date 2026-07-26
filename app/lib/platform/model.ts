@@ -1306,6 +1306,140 @@ export type KeystoneOverview = {
   correctiveActions: CorrectiveActionRecord[];
 };
 
+export type EnterpriseFederationRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  status: string;
+  purpose: string;
+  verified: number;
+  ownerEmail: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FederationWorkspaceRecord = {
+  $id: string;
+  federationId: string;
+  anchorWorkspaceId: string;
+  memberWorkspaceId: string;
+  alias: string;
+  status: string;
+  accessLevel: string;
+  verified: number;
+  dataSharingApproved: number;
+  rawDataShared: number;
+  proposedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DelegatedAuthorityRecord = {
+  $id: string;
+  workspaceId: string;
+  federationId: string;
+  delegateEmail: string;
+  role: string;
+  scopes: string;
+  status: string;
+  verified: number;
+  active: number;
+  externalChangesAllowed: number;
+  proposedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FederatedPolicyBindingRecord = {
+  $id: string;
+  workspaceId: string;
+  federationId: string;
+  name: string;
+  scope: string;
+  mode: string;
+  status: string;
+  verified: number;
+  enforcementApplied: number;
+  externalSystemsChanged: number;
+  policyJson: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EnterpriseRollupRecord = {
+  $id: string;
+  workspaceId: string;
+  federationId: string;
+  status: string;
+  period: string;
+  workspaceCount: number;
+  connectedWorkspaceCount: number;
+  programsCount: number;
+  milestonesCount: number;
+  verifiedEvidenceCount: number;
+  benefitsMeasuredCount: number;
+  openVariancesCount: number;
+  confidenceBps: number;
+  decisionGrade: number;
+  sourceSnapshot: string;
+  externalSystemsQueried: number;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type PrivacyBenchmarkRecord = {
+  $id: string;
+  workspaceId: string;
+  federationId: string;
+  rollupId: string;
+  metric: string;
+  currentValue: number;
+  benchmarkLow: number;
+  benchmarkHigh: number;
+  unit: string;
+  cohortSize: number;
+  status: string;
+  kAnonymityMet: number;
+  differentialPrivacyApplied: number;
+  rawTenantDataExposed: number;
+  confidenceBps: number;
+  evidence: string;
+  createdAt: string;
+};
+
+export type ExecutiveDecisionPackageRecord = {
+  $id: string;
+  workspaceId: string;
+  federationId: string;
+  rollupId: string;
+  title: string;
+  status: string;
+  decision: string;
+  rationale: string;
+  approvalStatus: string;
+  authorized: number;
+  policyApplied: number;
+  delegationActivated: number;
+  financialCommitmentCreated: number;
+  externalActionsExecuted: number;
+  preparedBy: string;
+  decidedBy?: string;
+  createdAt: string;
+  decidedAt?: string;
+};
+
+export type ConcordOverview = {
+  workspaceId: string;
+  federation: EnterpriseFederationRecord;
+  federationWorkspaces: FederationWorkspaceRecord[];
+  authorities: DelegatedAuthorityRecord[];
+  policies: FederatedPolicyBindingRecord[];
+  rollups: EnterpriseRollupRecord[];
+  benchmarks: PrivacyBenchmarkRecord[];
+  packages: ExecutiveDecisionPackageRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

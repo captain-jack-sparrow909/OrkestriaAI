@@ -92,6 +92,13 @@ test("declares unique Appwrite foundation resources", () => {
       "benefit_measurements",
       "execution_variances",
       "corrective_actions",
+      "enterprise_federations",
+      "federation_workspaces",
+      "delegated_authorities",
+      "federated_policy_bindings",
+      "enterprise_rollups",
+      "privacy_benchmarks",
+      "executive_decision_packages",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -170,6 +177,13 @@ test("keeps every queried field indexed", () => {
   const benefitMeasurements = tables.find((table) => table.id === "benefit_measurements");
   const executionVariances = tables.find((table) => table.id === "execution_variances");
   const correctiveActions = tables.find((table) => table.id === "corrective_actions");
+  const enterpriseFederations = tables.find((table) => table.id === "enterprise_federations");
+  const federationWorkspaces = tables.find((table) => table.id === "federation_workspaces");
+  const delegatedAuthorities = tables.find((table) => table.id === "delegated_authorities");
+  const federatedPolicyBindings = tables.find((table) => table.id === "federated_policy_bindings");
+  const enterpriseRollups = tables.find((table) => table.id === "enterprise_rollups");
+  const privacyBenchmarks = tables.find((table) => table.id === "privacy_benchmarks");
+  const executiveDecisionPackages = tables.find((table) => table.id === "executive_decision_packages");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -242,6 +256,13 @@ test("keeps every queried field indexed", () => {
   assert.ok(benefitMeasurements.indexes.some((index) => index.attributes.includes("period")));
   assert.ok(executionVariances.indexes.some((index) => index.attributes.includes("assessedAt")));
   assert.ok(correctiveActions.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(enterpriseFederations.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(federationWorkspaces.indexes.some((index) => index.key === "federation_member_unique"));
+  assert.ok(delegatedAuthorities.indexes.some((index) => index.key === "federation_delegate_unique"));
+  assert.ok(federatedPolicyBindings.indexes.some((index) => index.key === "federation_name_unique"));
+  assert.ok(enterpriseRollups.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(privacyBenchmarks.indexes.some((index) => index.key === "rollup_metric_unique"));
+  assert.ok(executiveDecisionPackages.indexes.some((index) => index.attributes.includes("approvalStatus")));
 });
 
 test("enforces approval and execution roles", () => {

@@ -62,17 +62,19 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 15 adds **Keystone**, the Governed Execution & Benefits Realization
-control room. It connects initiative intent to internal program charters,
-milestone acceptance criteria, delivery evidence, benefit definitions,
-self-reported measurements, deterministic execution variance, and
-approval-gated corrective actions. Draft programs create no funding authority;
-submitted delivery and benefit evidence remains visibly unverified; assessments
-use no live model or external delivery, finance, customer, HR, or procurement
-systems. Even a valid approval records intent only and never changes a schedule,
-budget, financial commitment, or external system. The durable Appwrite
-foundation now spans 77 explicitly indexed tables.
+Phase 16 adds **Concord**, the Federated Enterprise Command control room. It
+coordinates proposed workspace relationships, delegated mandates, federated
+policy drafts, bounded operating rollups, clearly synthetic privacy-safe
+reference ranges, and evidence-gated executive packages. A workspace proposal
+grants no access, a mandate proposal stays inactive, and a policy draft is never
+applied automatically. Rollups read only the authorized anchor workspace and
+never query other member workspaces or external systems. Synthetic reference
+ranges use no real tenant records and are not presented as privacy-reviewed
+decision evidence. Even a valid executive approval records intent only and
+never applies policy, activates delegation, creates a financial commitment, or
+executes an external action. The durable Appwrite foundation now spans 84
+explicitly indexed tables.
 
-**Next phase:** Phase 16 — Federated Enterprise Command: multi-workspace
-operating rollups, delegated governance, cross-workspace policy, privacy-safe
-benchmarks, and evidence-backed executive decision packages.
+**Next phase:** Phase 17 — ModelOps, Evaluation & AI Quality Governance:
+model and prompt versioning, golden evaluations, drift signals, cost-quality
+routing, release gates, and human-approved model promotion.

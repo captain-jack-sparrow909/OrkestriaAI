@@ -77,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "governed_execution",
+      phase: "federated_enterprise_command",
       requestId,
     });
   }
@@ -1837,6 +1837,283 @@ async function orchestrator({ req, res, log, error }) {
         correctiveActionExecuted: false,
       });
       return res.json({ variances, requestId });
+    }
+
+    if (path === "/federation/rollup" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const federationId = String(body.federationId || "").slice(0, 36);
+      const period = String(body.period || new Date().toISOString().slice(0, 7))
+        .slice(0, 32);
+      if (!workspaceId || !federationId) {
+        return res.json(
+          { error: "workspaceId and federationId are required", requestId },
+          400,
+        );
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json(
+          { error: "Enterprise rollups are not allowed for this role", requestId },
+          403,
+        );
+      }
+      const [
+        federation,
+        federationWorkspaces,
+        programs,
+        milestones,
+        deliveryEvidence,
+        benefitMetrics,
+        benefitMeasurements,
+        variances,
+        correctiveActions,
+      ] = await Promise.all([
+        tables.getRow({
+          databaseId: DATABASE_ID,
+          tableId: "enterprise_federations",
+          rowId: federationId,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "federation_workspaces",
+          queries: [Query.equal("federationId", [federationId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "execution_programs",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "program_milestones",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "delivery_evidence",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "benefit_metrics",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "benefit_measurements",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "execution_variances",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "corrective_actions",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+      ]);
+      if (federation.workspaceId !== workspaceId) {
+        return res.json(
+          { error: "The federation is outside this anchor workspace", requestId },
+          409,
+        );
+      }
+      const connectedMembers = federationWorkspaces.rows.filter(
+        (member) =>
+          Number(member.verified) === 1 &&
+          Number(member.dataSharingApproved) === 1 &&
+          ["connected_anchor", "connected_verified"].includes(member.status),
+      );
+      const evidencedMilestones = new Set(
+        deliveryEvidence.rows.map((item) => item.milestoneId),
+      ).size;
+      const measuredMetrics = new Set(
+        benefitMeasurements.rows.map((item) => item.metricId),
+      ).size;
+      const verifiedEvidenceCount = deliveryEvidence.rows.filter(
+        (item) => Number(item.verified) === 1,
+      ).length;
+      const verifiedMeasurements = benefitMeasurements.rows.filter(
+        (item) => Number(item.independentlyVerified) === 1,
+      ).length;
+      const openVariances = variances.rows.filter(
+        (item) => !["resolved", "closed_verified"].includes(item.status),
+      ).length;
+      const heldOrApprovedActions = correctiveActions.rows.filter((item) =>
+        ["held", "approved"].includes(item.approvalStatus),
+      ).length;
+      const createdAt = new Date();
+      const rollup = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "enterprise_rollups",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          federationId,
+          status: "bounded_anchor_only",
+          period,
+          workspaceCount: federationWorkspaces.rows.length,
+          connectedWorkspaceCount: connectedMembers.length,
+          programsCount: programs.rows.length,
+          milestonesCount: milestones.rows.length,
+          verifiedEvidenceCount,
+          benefitsMeasuredCount: benefitMeasurements.rows.length,
+          openVariancesCount: openVariances,
+          confidenceBps: 3000,
+          decisionGrade: 0,
+          sourceSnapshot: JSON.stringify({
+            scope: "anchor_workspace_only",
+            anchorWorkspaceId: workspaceId,
+            connectedMemberIds: connectedMembers.map(
+              (member) => member.memberWorkspaceId,
+            ),
+            otherMemberWorkspacesQueried: false,
+            crossWorkspaceAuthorizationVerified: false,
+            externalSystemsQueried: false,
+            liveModelCalled: false,
+            verifiedMeasurements,
+            heldOrApprovedActions,
+          }),
+          externalSystemsQueried: 0,
+          createdBy: membership.userEmail,
+          createdAt: createdAt.toISOString(),
+        },
+        permissions: [],
+      });
+      const deliveryCoverage = milestones.rows.length
+        ? Math.round((evidencedMilestones / milestones.rows.length) * 100)
+        : 0;
+      const benefitObservability = benefitMetrics.rows.length
+        ? Math.round((measuredMetrics / benefitMetrics.rows.length) * 100)
+        : 0;
+      const varianceAttention = variances.rows.length
+        ? Math.round((heldOrApprovedActions / variances.rows.length) * 100)
+        : 0;
+      const referenceMetrics = [
+        {
+          metric: "delivery_evidence_coverage",
+          currentValue: deliveryCoverage,
+          benchmarkLow: 45,
+          benchmarkHigh: 75,
+          unit: "percent",
+        },
+        {
+          metric: "benefit_observability",
+          currentValue: benefitObservability,
+          benchmarkLow: 35,
+          benchmarkHigh: 65,
+          unit: "percent",
+        },
+        {
+          metric: "variance_attention",
+          currentValue: varianceAttention,
+          benchmarkLow: 50,
+          benchmarkHigh: 80,
+          unit: "percent",
+        },
+      ];
+      const benchmarks = await Promise.all(
+        referenceMetrics.map((benchmark) =>
+          tables.createRow({
+            databaseId: DATABASE_ID,
+            tableId: "privacy_benchmarks",
+            rowId: ID.unique(),
+            data: {
+              workspaceId,
+              federationId,
+              rollupId: rollup.$id,
+              ...benchmark,
+              cohortSize: 24,
+              status: "synthetic_reference_no_tenant",
+              kAnonymityMet: 0,
+              differentialPrivacyApplied: 0,
+              rawTenantDataExposed: 0,
+              confidenceBps: 3000,
+              evidence: JSON.stringify({
+                basis: "deterministic_federation_fixture",
+                cohortIsSynthetic: true,
+                realTenantRecordsUsed: false,
+                privacyReviewCompleted: false,
+                kAnonymityAudited: false,
+                differentialPrivacyApplied: false,
+                rawTenantDataExposed: false,
+                decisionEvidence: false,
+              }),
+              createdAt: createdAt.toISOString(),
+            },
+            permissions: [],
+          }),
+        ),
+      );
+      await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "federation_rollup",
+            quantity: benchmarks.length,
+            unit: "benchmark_dimension",
+            sourceType: "enterprise_rollup",
+            sourceId: rollup.$id,
+            period: createdAt.toISOString().slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `federation-rollup:${rollup.$id}`,
+            recordedAt: createdAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "audit_events",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            actorEmail: membership.userEmail,
+            action: "federation.rollup.completed",
+            targetType: "enterprise_rollup",
+            targetId: rollup.$id,
+            outcome: "success",
+            metadata: JSON.stringify({
+              anchorWorkspaceOnly: true,
+              otherMemberWorkspacesQueried: false,
+              externalSystemsQueried: false,
+              liveModelCalled: false,
+              rawTenantDataExposed: false,
+              privacyReviewCompleted: false,
+              policyApplied: false,
+              delegationActivated: false,
+              externalActionsExecuted: false,
+              requestId,
+            }),
+            occurredAt: createdAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      audit(log, {
+        requestId,
+        event: "federation.rollup.completed",
+        workspaceId,
+        federationId,
+        rollupId: rollup.$id,
+        anchorWorkspaceOnly: true,
+        otherMemberWorkspacesQueried: false,
+        rawTenantDataExposed: false,
+        externalActionsExecuted: false,
+      });
+      return res.json({ rollup, benchmarks, requestId });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

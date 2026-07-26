@@ -76,6 +76,13 @@ export const appwriteTables = {
   benefitMeasurements: "benefit_measurements",
   executionVariances: "execution_variances",
   correctiveActions: "corrective_actions",
+  enterpriseFederations: "enterprise_federations",
+  federationWorkspaces: "federation_workspaces",
+  delegatedAuthorities: "delegated_authorities",
+  federatedPolicyBindings: "federated_policy_bindings",
+  enterpriseRollups: "enterprise_rollups",
+  privacyBenchmarks: "privacy_benchmarks",
+  executiveDecisionPackages: "executive_decision_packages",
 } as const;
 
 export type AppwriteServerConfig = {

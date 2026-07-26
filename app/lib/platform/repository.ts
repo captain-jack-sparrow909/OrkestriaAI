@@ -85,6 +85,14 @@ import {
   type ExecutionVarianceRecord,
   type CorrectiveActionRecord,
   type KeystoneOverview,
+  type EnterpriseFederationRecord,
+  type FederationWorkspaceRecord,
+  type DelegatedAuthorityRecord,
+  type FederatedPolicyBindingRecord,
+  type EnterpriseRollupRecord,
+  type PrivacyBenchmarkRecord,
+  type ExecutiveDecisionPackageRecord,
+  type ConcordOverview,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -6781,6 +6789,657 @@ export async function recordCorrectiveActionDecision(input: {
       blockers: blockers.length,
       scheduleChanged: false,
       budgetChanged: false,
+      financialCommitmentCreated: false,
+      externalActionsExecuted: false,
+    },
+  });
+  return updated;
+}
+
+function federationRowId(workspaceId: string) {
+  return enterpriseRowId("federation", workspaceId);
+}
+
+function federationAnchorRowId(workspaceId: string) {
+  return enterpriseRowId("federation_anchor", workspaceId);
+}
+
+function federationOwnerAuthorityRowId(workspaceId: string) {
+  return enterpriseRowId("federation_owner", workspaceId);
+}
+
+function federatedApprovalPolicyRowId(workspaceId: string) {
+  return enterpriseRowId("federation_approval", workspaceId);
+}
+
+async function ensureConcordFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureKeystoneFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const federationId = federationRowId(workspace.workspaceId);
+  await createIfMissing(appwrite, `${base}/${appwriteTables.enterpriseFederations}/rows`, {
+    rowId: federationId,
+    data: {
+      workspaceId: workspace.workspaceId,
+      name: "Northstar Enterprise Concord",
+      status: "draft_single_workspace",
+      purpose:
+        "Coordinate portfolio, execution, policy, and evidence across explicitly approved workspaces.",
+      verified: 0,
+      ownerEmail: email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await createIfMissing(appwrite, `${base}/${appwriteTables.federationWorkspaces}/rows`, {
+    rowId: federationAnchorRowId(workspace.workspaceId),
+    data: {
+      federationId,
+      anchorWorkspaceId: workspace.workspaceId,
+      memberWorkspaceId: workspace.workspaceId,
+      alias: "Northstar Labs · anchor",
+      status: "connected_anchor",
+      accessLevel: "governance_read",
+      verified: 1,
+      dataSharingApproved: 1,
+      rawDataShared: 0,
+      proposedBy: email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await createIfMissing(appwrite, `${base}/${appwriteTables.delegatedAuthorities}/rows`, {
+    rowId: federationOwnerAuthorityRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      federationId,
+      delegateEmail: email.toLowerCase(),
+      role: "enterprise_owner",
+      scopes: JSON.stringify([
+        "federation.read",
+        "rollup.run",
+        "executive_package.decide",
+      ]),
+      status: "active_verified_anchor",
+      verified: 1,
+      active: 1,
+      externalChangesAllowed: 0,
+      proposedBy: email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await createIfMissing(
+    appwrite,
+    `${base}/${appwriteTables.federatedPolicyBindings}/rows`,
+    {
+      rowId: federatedApprovalPolicyRowId(workspace.workspaceId),
+      data: {
+        workspaceId: workspace.workspaceId,
+        federationId,
+        name: "Material action approval standard",
+        scope: "all_member_workspaces",
+        mode: "advisory",
+        status: "draft_unverified_unapplied",
+        verified: 0,
+        enforcementApplied: 0,
+        externalSystemsChanged: 0,
+        policyJson: JSON.stringify({
+          statement:
+            "Purchases, submissions, production changes, and security exceptions require explicit human approval.",
+          materialityThresholdVerified: false,
+          memberWorkspaceConsentVerified: false,
+        }),
+        createdBy: email.toLowerCase(),
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    },
+  );
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 16,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+            continuousTrust: true,
+            adaptiveAutonomy: true,
+            collaborativeDecisioning: true,
+            organizationalMemory: true,
+            operationalTwin: true,
+            strategicPlanning: true,
+            portfolioIntelligence: true,
+            governedExecution: true,
+            benefitsRealization: true,
+            federatedEnterpriseCommand: true,
+            privacySafeBenchmarking: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+export async function getConcordOverview(
+  email: string,
+  displayName: string,
+): Promise<ConcordOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureConcordFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view enterprise command.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const federation = await appwrite.client.request<EnterpriseFederationRecord>(
+    `${base}/${appwriteTables.enterpriseFederations}/rows/${federationRowId(workspace.workspaceId)}`,
+  );
+  const workspaceRows = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.limit(100),
+  ];
+  const recentRows = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.orderDesc("createdAt"),
+    query.limit(100),
+  ];
+  const [federationWorkspaces, authorities, policies, rollups, benchmarks, packages] =
+    await Promise.all([
+      appwrite.client.request<RowList<FederationWorkspaceRecord>>(
+        `${base}/${appwriteTables.federationWorkspaces}/rows`,
+        {
+          queries: [
+            query.equal("anchorWorkspaceId", workspace.workspaceId),
+            query.limit(100),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<DelegatedAuthorityRecord>>(
+        `${base}/${appwriteTables.delegatedAuthorities}/rows`,
+        { queries: workspaceRows },
+      ),
+      appwrite.client.request<RowList<FederatedPolicyBindingRecord>>(
+        `${base}/${appwriteTables.federatedPolicyBindings}/rows`,
+        { queries: workspaceRows },
+      ),
+      appwrite.client.request<RowList<EnterpriseRollupRecord>>(
+        `${base}/${appwriteTables.enterpriseRollups}/rows`,
+        { queries: recentRows },
+      ),
+      appwrite.client.request<RowList<PrivacyBenchmarkRecord>>(
+        `${base}/${appwriteTables.privacyBenchmarks}/rows`,
+        { queries: recentRows },
+      ),
+      appwrite.client.request<RowList<ExecutiveDecisionPackageRecord>>(
+        `${base}/${appwriteTables.executiveDecisionPackages}/rows`,
+        { queries: recentRows },
+      ),
+    ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    federation,
+    federationWorkspaces: federationWorkspaces.rows,
+    authorities: authorities.rows,
+    policies: policies.rows,
+    rollups: rollups.rows,
+    benchmarks: benchmarks.rows,
+    packages: packages.rows,
+  };
+}
+
+export async function proposeFederationWorkspace(input: {
+  workspaceId: string;
+  memberWorkspaceId: string;
+  alias: string;
+  accessLevel: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const memberWorkspaceId = input.memberWorkspaceId
+    .trim()
+    .replace(/[^A-Za-z0-9._-]/g, "")
+    .slice(0, 36);
+  if (!memberWorkspaceId || memberWorkspaceId === input.workspaceId) {
+    throw new Error("Enter a different target workspace ID.");
+  }
+  const federationId = federationRowId(input.workspaceId);
+  const now = new Date().toISOString();
+  const member = await appwrite.client.request<FederationWorkspaceRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.federationWorkspaces}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          federationId,
+          anchorWorkspaceId: input.workspaceId,
+          memberWorkspaceId,
+          alias: input.alias.trim().slice(0, 128),
+          status: "proposed_unverified_no_access",
+          accessLevel: input.accessLevel.trim().slice(0, 32),
+          verified: 0,
+          dataSharingApproved: 0,
+          rawDataShared: 0,
+          proposedBy: input.email.toLowerCase(),
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "federation.workspace.proposed",
+    targetType: "federation_workspace",
+    targetId: member.$id,
+    metadata: {
+      verified: false,
+      accessGranted: false,
+      dataSharingApproved: false,
+      rawDataShared: false,
+    },
+  });
+  return member;
+}
+
+export async function proposeDelegatedAuthority(input: {
+  workspaceId: string;
+  delegateEmail: string;
+  role: string;
+  scopes: string[];
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const delegateEmail = input.delegateEmail.trim().toLowerCase().slice(0, 254);
+  if (!delegateEmail.includes("@")) {
+    throw new Error("Enter a valid delegate email address.");
+  }
+  const now = new Date().toISOString();
+  const authority = await appwrite.client.request<DelegatedAuthorityRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.delegatedAuthorities}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          federationId: federationRowId(input.workspaceId),
+          delegateEmail,
+          role: input.role.trim().slice(0, 64),
+          scopes: JSON.stringify(
+            input.scopes.map((scope) => scope.trim().slice(0, 64)).filter(Boolean).slice(0, 25),
+          ),
+          status: "proposed_unverified_inactive",
+          verified: 0,
+          active: 0,
+          externalChangesAllowed: 0,
+          proposedBy: input.email.toLowerCase(),
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "federation.authority.proposed",
+    targetType: "delegated_authority",
+    targetId: authority.$id,
+    metadata: {
+      verified: false,
+      active: false,
+      externalChangesAllowed: false,
+    },
+  });
+  return authority;
+}
+
+export async function draftFederatedPolicy(input: {
+  workspaceId: string;
+  name: string;
+  scope: string;
+  statement: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const now = new Date().toISOString();
+  const policy = await appwrite.client.request<FederatedPolicyBindingRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.federatedPolicyBindings}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          federationId: federationRowId(input.workspaceId),
+          name: input.name.trim().slice(0, 180),
+          scope: input.scope.trim().slice(0, 64),
+          mode: "advisory",
+          status: "draft_unverified_unapplied",
+          verified: 0,
+          enforcementApplied: 0,
+          externalSystemsChanged: 0,
+          policyJson: JSON.stringify({
+            statement: input.statement.trim().slice(0, 4000),
+            memberWorkspaceConsentVerified: false,
+            enforcementConfigurationVerified: false,
+          }),
+          createdBy: input.email.toLowerCase(),
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "federation.policy.drafted",
+    targetType: "federated_policy",
+    targetId: policy.$id,
+    metadata: {
+      verified: false,
+      enforcementApplied: false,
+      externalSystemsChanged: false,
+    },
+  });
+  return policy;
+}
+
+export async function runFederationRollup(input: {
+  workspaceId: string;
+  federationId: string;
+  period: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureConcordFoundation(input.email, input.displayName);
+  if (
+    !workspace ||
+    workspace.workspaceId !== input.workspaceId ||
+    input.federationId !== federationRowId(input.workspaceId)
+  ) {
+    throw new Error("Federation identity mismatch.");
+  }
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${process.env.APPWRITE_FUNCTION_ID || "orchestrator"}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          federationId: input.federationId,
+          period: input.period.slice(0, 32),
+        }),
+        async: false,
+        path: "/federation/rollup",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    rollup?: EnterpriseRollupRecord;
+    benchmarks?: PrivacyBenchmarkRecord[];
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Enterprise rollup returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.rollup ||
+    response.benchmarks?.length !== 3
+  ) {
+    throw new Error(response?.error || execution.errors || "Enterprise rollup failed.");
+  }
+  return response;
+}
+
+export async function createExecutiveDecisionPackage(input: {
+  workspaceId: string;
+  rollupId: string;
+  title: string;
+  rationale: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const rollup = await appwrite.client.request<EnterpriseRollupRecord>(
+    `${base}/${appwriteTables.enterpriseRollups}/rows/${input.rollupId}`,
+  );
+  if (rollup.workspaceId !== input.workspaceId) {
+    throw new Error("The selected enterprise rollup is outside this workspace.");
+  }
+  const packageRecord =
+    await appwrite.client.request<ExecutiveDecisionPackageRecord>(
+      `${base}/${appwriteTables.executiveDecisionPackages}/rows`,
+      {
+        method: "POST",
+        body: {
+          rowId: "unique()",
+          data: {
+            workspaceId: input.workspaceId,
+            federationId: rollup.federationId,
+            rollupId: rollup.$id,
+            title: input.title.trim().slice(0, 180),
+            status: "prepared_unverified",
+            decision: "pending",
+            rationale: input.rationale.trim().slice(0, 2000),
+            approvalStatus: "pending",
+            authorized: 0,
+            policyApplied: 0,
+            delegationActivated: 0,
+            financialCommitmentCreated: 0,
+            externalActionsExecuted: 0,
+            preparedBy: input.email.toLowerCase(),
+            createdAt: new Date().toISOString(),
+          },
+          permissions: [],
+        },
+      },
+    );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "federation.executive_package.prepared",
+    targetType: "executive_decision_package",
+    targetId: packageRecord.$id,
+    metadata: {
+      verified: false,
+      policyApplied: false,
+      delegationActivated: false,
+      externalActionsExecuted: false,
+    },
+  });
+  return packageRecord;
+}
+
+export async function recordExecutivePackageDecision(input: {
+  workspaceId: string;
+  packageId: string;
+  decision: "hold" | "approve";
+  rationale: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const packageRecord =
+    await appwrite.client.request<ExecutiveDecisionPackageRecord>(
+      `${base}/${appwriteTables.executiveDecisionPackages}/rows/${input.packageId}`,
+    );
+  if (
+    packageRecord.workspaceId !== input.workspaceId ||
+    packageRecord.approvalStatus !== "pending"
+  ) {
+    throw new Error("The executive package is not pending in this workspace.");
+  }
+  const [federation, members, authorities, policies, rollup, benchmarks] =
+    await Promise.all([
+      appwrite.client.request<EnterpriseFederationRecord>(
+        `${base}/${appwriteTables.enterpriseFederations}/rows/${packageRecord.federationId}`,
+      ),
+      appwrite.client.request<RowList<FederationWorkspaceRecord>>(
+        `${base}/${appwriteTables.federationWorkspaces}/rows`,
+        {
+          queries: [
+            query.equal("federationId", packageRecord.federationId),
+            query.limit(100),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<DelegatedAuthorityRecord>>(
+        `${base}/${appwriteTables.delegatedAuthorities}/rows`,
+        {
+          queries: [
+            query.equal("federationId", packageRecord.federationId),
+            query.limit(100),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<FederatedPolicyBindingRecord>>(
+        `${base}/${appwriteTables.federatedPolicyBindings}/rows`,
+        {
+          queries: [
+            query.equal("federationId", packageRecord.federationId),
+            query.limit(100),
+          ],
+        },
+      ),
+      appwrite.client.request<EnterpriseRollupRecord>(
+        `${base}/${appwriteTables.enterpriseRollups}/rows/${packageRecord.rollupId}`,
+      ),
+      appwrite.client.request<RowList<PrivacyBenchmarkRecord>>(
+        `${base}/${appwriteTables.privacyBenchmarks}/rows`,
+        {
+          queries: [
+            query.equal("rollupId", packageRecord.rollupId),
+            query.limit(25),
+          ],
+        },
+      ),
+    ]);
+  const connectedMembers = members.rows.filter(
+    (member) =>
+      member.verified === 1 &&
+      member.dataSharingApproved === 1 &&
+      ["connected_anchor", "connected_verified"].includes(member.status),
+  );
+  const blockers = [
+    federation.verified === 1
+      ? null
+      : "The enterprise federation is unverified.",
+    connectedMembers.length >= 2
+      ? null
+      : "At least two independently verified workspaces must be connected.",
+    authorities.rows.some(
+      (authority) => authority.verified === 1 && authority.active === 1,
+    )
+      ? null
+      : "No verified delegated authority is active.",
+    policies.rows.some(
+      (policy) => policy.verified === 1 && policy.status === "verified",
+    )
+      ? null
+      : "No federated policy has been independently verified.",
+    rollup.status === "verified" &&
+    rollup.decisionGrade === 1 &&
+    rollup.confidenceBps >= 8000
+      ? null
+      : "The enterprise rollup is bounded or not decision-grade.",
+    benchmarks.rows.length === 3 &&
+    benchmarks.rows.every(
+      (benchmark) =>
+        benchmark.status === "privacy_reviewed" &&
+        benchmark.kAnonymityMet === 1 &&
+        benchmark.rawTenantDataExposed === 0 &&
+        benchmark.confidenceBps >= 8000,
+    )
+      ? null
+      : "Privacy-reviewed decision-grade benchmarks are unavailable.",
+  ].filter(Boolean);
+  if (input.decision === "approve" && blockers.length) {
+    throw new Error(
+      `Executive package cannot be approved while evidence blockers remain: ${blockers.join(" ")}`,
+    );
+  }
+  const now = new Date().toISOString();
+  const updated = await appwrite.client.request<ExecutiveDecisionPackageRecord>(
+    `${base}/${appwriteTables.executiveDecisionPackages}/rows/${packageRecord.$id}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          status:
+            input.decision === "approve"
+              ? "approved_no_execution"
+              : "held_no_change",
+          decision: input.decision,
+          rationale: input.rationale.trim().slice(0, 2000),
+          approvalStatus: input.decision === "approve" ? "approved" : "held",
+          authorized: input.decision === "approve" ? 1 : 0,
+          policyApplied: 0,
+          delegationActivated: 0,
+          financialCommitmentCreated: 0,
+          externalActionsExecuted: 0,
+          decidedBy: input.email.toLowerCase(),
+          decidedAt: now,
+        },
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `federation.executive_package.${input.decision}`,
+    targetType: "executive_decision_package",
+    targetId: packageRecord.$id,
+    metadata: {
+      blockers: blockers.length,
+      policyApplied: false,
+      delegationActivated: false,
       financialCommitmentCreated: false,
       externalActionsExecuted: false,
     },
