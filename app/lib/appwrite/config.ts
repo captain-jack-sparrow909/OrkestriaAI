@@ -62,6 +62,13 @@ export const appwriteTables = {
   scenarioSimulations: "scenario_simulations",
   impactForecasts: "impact_forecasts",
   memoryPromotions: "memory_promotions",
+  strategicGoals: "strategic_goals",
+  portfolioInitiatives: "portfolio_initiatives",
+  initiativeDependencies: "initiative_dependencies",
+  capacityEnvelopes: "capacity_envelopes",
+  portfolioScenarios: "portfolio_scenarios",
+  portfolioForecasts: "portfolio_forecasts",
+  investmentDecisions: "investment_decisions",
 } as const;
 
 export type AppwriteServerConfig = {

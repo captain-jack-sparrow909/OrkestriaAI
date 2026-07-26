@@ -77,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "organizational_memory",
+      phase: "strategic_portfolio",
       requestId,
     });
   }
@@ -1404,6 +1404,238 @@ async function orchestrator({ req, res, log, error }) {
         knowledgeBaseChanged: false,
       });
       return res.json({ simulation, forecasts, requestId });
+    }
+
+    if (path === "/portfolio/simulate" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const title = String(body.title || "").trim().slice(0, 180);
+      const selectedInitiativeIds = Array.isArray(body.selectedInitiativeIds)
+        ? body.selectedInitiativeIds
+            .map((value) => String(value).slice(0, 36))
+            .filter(Boolean)
+            .slice(0, 25)
+        : [];
+      const budgetLimitCents = Math.min(
+        10_000_000_000,
+        Math.max(0, Math.round(Number(body.budgetLimitCents) || 0)),
+      );
+      const headcountLimit = Math.min(
+        10_000,
+        Math.max(0, Math.round(Number(body.headcountLimit) || 0)),
+      );
+      const horizonMonths = Math.min(
+        36,
+        Math.max(3, Math.round(Number(body.horizonMonths) || 12)),
+      );
+      if (!workspaceId || !title || selectedInitiativeIds.length === 0) {
+        return res.json(
+          { error: "workspaceId, title, and at least one initiative are required", requestId },
+          400,
+        );
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json({ error: "Portfolio simulations are not allowed for this role", requestId }, 403);
+      }
+      const [initiativeList, capacityList] = await Promise.all([
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "portfolio_initiatives",
+          queries: [
+            Query.equal("workspaceId", [workspaceId]),
+            Query.limit(100),
+          ],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "capacity_envelopes",
+          queries: [
+            Query.equal("workspaceId", [workspaceId]),
+            Query.limit(1),
+          ],
+          total: false,
+        }),
+      ]);
+      const selected = initiativeList.rows.filter((initiative) =>
+        selectedInitiativeIds.includes(initiative.$id),
+      );
+      if (selected.length !== selectedInitiativeIds.length || !capacityList.rows[0]) {
+        return res.json({ error: "The selected portfolio is not valid in this workspace", requestId }, 409);
+      }
+      const selectedBudgetCents = selected.reduce(
+        (total, initiative) => total + Number(initiative.proposedBudgetCents || 0),
+        0,
+      );
+      const selectedHeadcount = selected.reduce(
+        (total, initiative) => total + Number(initiative.requiredHeadcount || 0),
+        0,
+      );
+      const budgetFit = budgetLimitCents > 0 && selectedBudgetCents <= budgetLimitCents;
+      const headcountFit = headcountLimit > 0 && selectedHeadcount <= headcountLimit;
+      const resourceFitCount = Number(budgetFit) + Number(headcountFit);
+      const outcomeScore = Math.min(
+        78,
+        42 + selected.length * 6 + resourceFitCount * 5,
+      );
+      const confidenceBps = 2800;
+      const completedAt = new Date();
+      const assumptions = [
+        "Initiative costs, capacity, and expected outcomes are planning assumptions.",
+        "No finance, HR, delivery, or customer system was queried.",
+        "The scenario uses deterministic reference ranges and no live AI model.",
+        "Scenario completion creates no budget, hiring, vendor, or operational commitment.",
+      ];
+      const scenario = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "portfolio_scenarios",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          title,
+          status: "synthetic_advisory",
+          horizonMonths,
+          selectedInitiativeIds: JSON.stringify(selectedInitiativeIds),
+          budgetLimitCents,
+          headcountLimit,
+          assumptions: JSON.stringify(assumptions),
+          outcomeScore,
+          confidenceBps,
+          liveModelCalled: 0,
+          customerDataUsed: 0,
+          financialCommitmentCreated: 0,
+          createdBy: membership.userEmail,
+          createdAt: completedAt.toISOString(),
+        },
+        permissions: [],
+      });
+      const utilizationPercent =
+        budgetLimitCents > 0
+          ? Math.min(200, Math.round((selectedBudgetCents / budgetLimitCents) * 100))
+          : 0;
+      const dimensions = [
+        {
+          dimension: "strategic_value",
+          direction: "up",
+          baseline: 50,
+          low: Math.max(50, outcomeScore - 8),
+          high: Math.min(100, outcomeScore + 10),
+          unit: "score",
+        },
+        {
+          dimension: "budget_utilization",
+          direction: utilizationPercent <= 100 ? "within_envelope" : "over_envelope",
+          baseline: 0,
+          low: Math.max(0, utilizationPercent - 5),
+          high: utilizationPercent + 8,
+          unit: "percent",
+        },
+        {
+          dimension: "delivery_horizon",
+          direction: "uncertain",
+          baseline: horizonMonths,
+          low: Math.max(3, horizonMonths - 2),
+          high: horizonMonths + 4,
+          unit: "months",
+        },
+        {
+          dimension: "portfolio_risk",
+          direction: "uncertain",
+          baseline: 50,
+          low: budgetFit && headcountFit ? 38 : 48,
+          high: budgetFit && headcountFit ? 62 : 78,
+          unit: "risk_index",
+        },
+      ];
+      const forecasts = await Promise.all(
+        dimensions.map((dimension) =>
+          tables.createRow({
+            databaseId: DATABASE_ID,
+            tableId: "portfolio_forecasts",
+            rowId: ID.unique(),
+            data: {
+              workspaceId,
+              scenarioId: scenario.$id,
+              dimension: dimension.dimension,
+              direction: dimension.direction,
+              baselineValue: dimension.baseline,
+              projectedValueLow: dimension.low,
+              projectedValueHigh: dimension.high,
+              unit: dimension.unit,
+              confidenceBps,
+              status: "synthetic_range",
+              evidence: JSON.stringify({
+                basis: "deterministic_portfolio_fixture",
+                selectedBudgetCents,
+                selectedHeadcount,
+                budgetFit,
+                headcountFit,
+                externallyVerifiedCapacity: false,
+                realizedBenefitClaimed: false,
+                decisionEvidence: false,
+              }),
+              createdAt: completedAt.toISOString(),
+            },
+            permissions: [],
+          }),
+        ),
+      );
+      await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "portfolio_scenario",
+            quantity: forecasts.length,
+            unit: "forecast_dimension",
+            sourceType: "portfolio_scenario",
+            sourceId: scenario.$id,
+            period: completedAt.toISOString().slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `portfolio-scenario:${scenario.$id}`,
+            recordedAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "audit_events",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            actorEmail: membership.userEmail,
+            action: "portfolio.scenario.completed",
+            targetType: "portfolio_scenario",
+            targetId: scenario.$id,
+            outcome: "success",
+            metadata: JSON.stringify({
+              selectedInitiatives: selected.length,
+              liveModelCalled: false,
+              customerDataUsed: false,
+              capacityExternallyVerified: false,
+              financialCommitmentCreated: false,
+              externalActionsExecuted: false,
+              requestId,
+            }),
+            occurredAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      audit(log, {
+        requestId,
+        event: "portfolio.scenario.completed",
+        workspaceId,
+        scenarioId: scenario.$id,
+        selectedInitiatives: selected.length,
+        liveModelCalled: false,
+        customerDataUsed: false,
+        financialCommitmentCreated: false,
+        externalActionsExecuted: false,
+      });
+      return res.json({ scenario, forecasts, requestId });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

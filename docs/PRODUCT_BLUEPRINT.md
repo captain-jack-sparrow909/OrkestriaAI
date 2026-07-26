@@ -407,6 +407,29 @@ production; even a valid promotion updates internal knowledge only.
 initiatives, capacity constraints, scenario-backed tradeoffs, portfolio risk,
 and governed investment decisions.
 
+### Phase 14 — Strategic Planning & Portfolio Intelligence
+
+Connect strategy to constrained choices so leaders can compare portfolios
+without mistaking a planning scenario for an approved investment.
+
+**Implementation status:** Meridian ships as an authenticated strategic
+planning and portfolio intelligence surface backed by seven new Appwrite
+tables. Three workspace goals and four initiatives begin as unverified planning
+drafts; proposed costs, people requirements, expected impact, and dependency
+edges remain explicit assumptions. Budget and headcount capacity are not
+connected to finance or HR, and updating the envelope creates no commitment. A
+Function-backed portfolio rehearsal emits four deterministic tradeoff ranges
+with no live model, customer data, finance, HR, delivery, or external system
+access. Investment authorization remains blocked until linked goals, capacity,
+dependencies, the scenario, and all forecasts are independently verified.
+Recording a hold changes nothing, while even a valid planning authorization
+creates no budget allocation, purchase, hiring plan, vendor agreement, or
+external execution.
+
+**Next phase:** Governed Execution & Benefits Realization — add programs,
+milestones, delivery evidence, realized benefits, variance management, and
+approval-bound corrective action.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

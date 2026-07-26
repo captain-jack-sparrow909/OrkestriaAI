@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes sixty-three TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes seventy TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,15 +62,14 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 13 adds **Continuum**, the Organizational Memory & Operational Digital
-Twin control room. It separates canonical entities, temporal events, proposed
-claims, verified knowledge, point-in-time twin snapshots, scenario simulations,
-impact ranges, and governed memory promotion. Workspace observations remain
-self-reported until verified, configuration entities never masquerade as live
-inventory, and deterministic simulations use no live model, customer data, or
-external systems. Simulation output cannot promote itself into memory or
-execute an operational change.
+Phase 14 adds **Meridian**, the Strategic Planning & Portfolio Intelligence
+control room. It links strategic goals, initiative proposals, explicit
+dependencies, budget and people envelopes, deterministic portfolio scenarios,
+tradeoff ranges, and governed investment decisions. Goals, capacity, costs, and
+benefits begin as visible planning assumptions; simulations use no live model,
+customer data, finance, HR, or delivery systems. Scenario output cannot create
+a budget, hire, vendor contract, financial commitment, or external action.
 
-**Next phase:** Phase 14 — Strategic Planning & Portfolio Intelligence:
-goals, initiatives, capacity constraints, scenario-backed tradeoffs, portfolio
-risk, and governed investment decisions.
+**Next phase:** Phase 15 — Governed Execution & Benefits Realization:
+programs, milestones, delivery evidence, realized benefits, variance
+management, and approval-bound corrective action.

@@ -69,6 +69,14 @@ import {
   type ImpactForecastRecord,
   type MemoryPromotionRecord,
   type ContinuumOverview,
+  type StrategicGoalRecord,
+  type PortfolioInitiativeRecord,
+  type InitiativeDependencyRecord,
+  type CapacityEnvelopeRecord,
+  type PortfolioScenarioRecord,
+  type PortfolioForecastRecord,
+  type InvestmentDecisionRecord,
+  type MeridianOverview,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -5358,4 +5366,597 @@ export async function recordMemoryPromotion(input: {
     },
   });
   return promotion;
+}
+
+function strategicGoalRowId(pillar: string, workspaceId: string) {
+  return enterpriseRowId(`goal_${pillar}`, workspaceId);
+}
+
+function initiativeRowId(kind: string, workspaceId: string) {
+  return enterpriseRowId(`initiative_${kind}`, workspaceId);
+}
+
+function dependencyRowId(kind: string, workspaceId: string) {
+  return enterpriseRowId(`dependency_${kind}`, workspaceId);
+}
+
+function capacityRowId(workspaceId: string) {
+  return enterpriseRowId("capacity", workspaceId);
+}
+
+async function ensureMeridianFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureContinuumFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const goals = [
+    {
+      key: "trust",
+      title: "Make every consequential action provably governed",
+      pillar: "trust",
+      metric: "verified_control_coverage",
+      targetValue: 95,
+      unit: "percent",
+      priority: 1,
+    },
+    {
+      key: "value",
+      title: "Turn AI work into verified customer outcomes",
+      pillar: "customer_value",
+      metric: "verified_outcomes",
+      targetValue: 12,
+      unit: "outcomes",
+      priority: 2,
+    },
+    {
+      key: "scale",
+      title: "Scale operations without scaling avoidable risk",
+      pillar: "efficient_scale",
+      metric: "production_readiness_score",
+      targetValue: 90,
+      unit: "score",
+      priority: 3,
+    },
+  ];
+  for (const goal of goals) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.strategicGoals}/rows`, {
+      rowId: strategicGoalRowId(goal.key, workspace.workspaceId),
+      data: {
+        workspaceId: workspace.workspaceId,
+        title: goal.title,
+        pillar: goal.pillar,
+        status: "draft_unverified",
+        metric: goal.metric,
+        targetValue: goal.targetValue,
+        unit: goal.unit,
+        priority: goal.priority,
+        verified: 0,
+        evidence: JSON.stringify({
+          source: "workspace_strategy_template",
+          leadershipApproved: false,
+          productionBaselineVerified: false,
+        }),
+        ownerEmail: email.toLowerCase(),
+        horizon: "12_months",
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+  const initiatives = [
+    {
+      key: "approvals",
+      goal: "trust",
+      name: "Approval flow acceleration",
+      budget: 1_200_000,
+      headcount: 2,
+      impact: "Reduce approval latency while preserving every consequential gate.",
+      risk: "medium",
+    },
+    {
+      key: "resilience",
+      goal: "scale",
+      name: "Regional resilience proof",
+      budget: 2_200_000,
+      headcount: 3,
+      impact: "Validate failover and restore before geographic expansion.",
+      risk: "high",
+    },
+    {
+      key: "outcomes",
+      goal: "value",
+      name: "Verified outcome program",
+      budget: 900_000,
+      headcount: 2,
+      impact: "Convert self-reported value into independently verified outcomes.",
+      risk: "low",
+    },
+    {
+      key: "evidence",
+      goal: "trust",
+      name: "Evidence graph foundation",
+      budget: 1_500_000,
+      headcount: 2,
+      impact: "Connect claims, decisions, controls, and outcomes through durable provenance.",
+      risk: "medium",
+    },
+  ];
+  for (const initiative of initiatives) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.portfolioInitiatives}/rows`, {
+      rowId: initiativeRowId(initiative.key, workspace.workspaceId),
+      data: {
+        workspaceId: workspace.workspaceId,
+        goalId: strategicGoalRowId(initiative.goal, workspace.workspaceId),
+        name: initiative.name,
+        status: "proposed_unverified",
+        stage: "discovery",
+        proposedBudgetCents: initiative.budget,
+        requiredHeadcount: initiative.headcount,
+        expectedImpact: initiative.impact,
+        confidenceBps: 3000,
+        risk: initiative.risk,
+        assumptions: JSON.stringify([
+          "Budget and capacity are planning assumptions.",
+          "Expected impact is not a realized benefit.",
+          "No financial commitment has been created.",
+        ]),
+        ownerEmail: email.toLowerCase(),
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+  const dependencies = [
+    {
+      key: "resilience_evidence",
+      initiative: "resilience",
+      dependsOn: "evidence",
+      relationship: "evidence_prerequisite",
+    },
+    {
+      key: "outcomes_approvals",
+      initiative: "outcomes",
+      dependsOn: "approvals",
+      relationship: "workflow_prerequisite",
+    },
+    {
+      key: "approvals_evidence",
+      initiative: "approvals",
+      dependsOn: "evidence",
+      relationship: "measurement_prerequisite",
+    },
+  ];
+  for (const dependency of dependencies) {
+    await createIfMissing(
+      appwrite,
+      `${base}/${appwriteTables.initiativeDependencies}/rows`,
+      {
+        rowId: dependencyRowId(dependency.key, workspace.workspaceId),
+        data: {
+          workspaceId: workspace.workspaceId,
+          initiativeId: initiativeRowId(dependency.initiative, workspace.workspaceId),
+          dependsOnInitiativeId: initiativeRowId(dependency.dependsOn, workspace.workspaceId),
+          relationship: dependency.relationship,
+          status: "assumption_unverified",
+          resolved: 0,
+          evidence: JSON.stringify({
+            userConfirmed: false,
+            systemObserved: false,
+            blockingClaimed: true,
+          }),
+          createdAt: now,
+        },
+        permissions: [],
+      },
+    );
+  }
+  await createIfMissing(appwrite, `${base}/${appwriteTables.capacityEnvelopes}/rows`, {
+    rowId: capacityRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      period: "next_12_months",
+      status: "planning_assumption",
+      budgetCents: 5_000_000,
+      allocatedBudgetCents: 0,
+      availableHeadcount: 6,
+      allocatedHeadcount: 0,
+      externalVerified: 0,
+      source: "workspace_owner_assumption",
+      assumptions: JSON.stringify([
+        "Budget is not connected to a finance system.",
+        "Headcount is not connected to an HR system.",
+        "Updating this envelope creates no commitment.",
+      ]),
+      updatedBy: email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 14,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+            continuousTrust: true,
+            adaptiveAutonomy: true,
+            collaborativeDecisioning: true,
+            organizationalMemory: true,
+            operationalTwin: true,
+            strategicPlanning: true,
+            portfolioIntelligence: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+export async function getMeridianOverview(
+  email: string,
+  displayName: string,
+): Promise<MeridianOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureMeridianFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view strategic planning.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const recent = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.orderDesc("createdAt"),
+    query.limit(100),
+  ];
+  const [goals, initiatives, dependencies, capacity, scenarios, forecasts, decisions] =
+    await Promise.all([
+      appwrite.client.request<RowList<StrategicGoalRecord>>(
+        `${base}/${appwriteTables.strategicGoals}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderAsc("priority"),
+            query.limit(25),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<PortfolioInitiativeRecord>>(
+        `${base}/${appwriteTables.portfolioInitiatives}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("createdAt"),
+            query.limit(100),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<InitiativeDependencyRecord>>(
+        `${base}/${appwriteTables.initiativeDependencies}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<CapacityEnvelopeRecord>(
+        `${base}/${appwriteTables.capacityEnvelopes}/rows/${capacityRowId(workspace.workspaceId)}`,
+      ),
+      appwrite.client.request<RowList<PortfolioScenarioRecord>>(
+        `${base}/${appwriteTables.portfolioScenarios}/rows`,
+        { queries: recent },
+      ),
+      appwrite.client.request<RowList<PortfolioForecastRecord>>(
+        `${base}/${appwriteTables.portfolioForecasts}/rows`,
+        { queries: recent },
+      ),
+      appwrite.client.request<RowList<InvestmentDecisionRecord>>(
+        `${base}/${appwriteTables.investmentDecisions}/rows`,
+        { queries: recent },
+      ),
+    ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    goals: goals.rows,
+    initiatives: initiatives.rows,
+    dependencies: dependencies.rows,
+    capacity,
+    scenarios: scenarios.rows,
+    forecasts: forecasts.rows,
+    decisions: decisions.rows,
+  };
+}
+
+export async function proposePortfolioInitiative(input: {
+  workspaceId: string;
+  goalId: string;
+  name: string;
+  expectedImpact: string;
+  proposedBudgetDollars: number;
+  requiredHeadcount: number;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const goal = await appwrite.client.request<StrategicGoalRecord>(
+    `${base}/${appwriteTables.strategicGoals}/rows/${input.goalId}`,
+  );
+  if (goal.workspaceId !== input.workspaceId) {
+    throw new Error("The selected goal is outside this workspace.");
+  }
+  const now = new Date().toISOString();
+  const initiative = await appwrite.client.request<PortfolioInitiativeRecord>(
+    `${base}/${appwriteTables.portfolioInitiatives}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          goalId: goal.$id,
+          name: input.name.trim().slice(0, 180),
+          status: "proposed_unverified",
+          stage: "discovery",
+          proposedBudgetCents: Math.round(
+            Math.min(10_000_000, Math.max(0, input.proposedBudgetDollars)) * 100,
+          ),
+          requiredHeadcount: Math.min(1000, Math.max(0, input.requiredHeadcount)),
+          expectedImpact: input.expectedImpact.trim().slice(0, 2000),
+          confidenceBps: 2000,
+          risk: "medium",
+          assumptions: JSON.stringify([
+            "Proposal is user-supplied.",
+            "Budget and impact are unverified planning assumptions.",
+            "No financial commitment has been created.",
+          ]),
+          ownerEmail: input.email.toLowerCase(),
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "portfolio.initiative.proposed",
+    targetType: "portfolio_initiative",
+    targetId: initiative.$id,
+    metadata: { verified: false, financialCommitmentCreated: false },
+  });
+  return initiative;
+}
+
+export async function updateCapacityEnvelope(input: {
+  workspaceId: string;
+  budgetDollars: number;
+  availableHeadcount: number;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const now = new Date().toISOString();
+  const capacity = await appwrite.client.request<CapacityEnvelopeRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.capacityEnvelopes}/rows/${capacityRowId(input.workspaceId)}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          status: "planning_assumption",
+          budgetCents: Math.round(
+            Math.min(100_000_000, Math.max(0, input.budgetDollars)) * 100,
+          ),
+          availableHeadcount: Math.min(10_000, Math.max(0, input.availableHeadcount)),
+          externalVerified: 0,
+          source: "workspace_owner_assumption",
+          assumptions: JSON.stringify([
+            "Budget is not connected to a finance system.",
+            "Headcount is not connected to an HR system.",
+            "Updating this envelope creates no commitment.",
+          ]),
+          updatedBy: input.email.toLowerCase(),
+          updatedAt: now,
+        },
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "portfolio.capacity.updated",
+    targetType: "capacity_envelope",
+    targetId: capacity.$id,
+    metadata: { externalVerified: false, financialCommitmentCreated: false },
+  });
+  return capacity;
+}
+
+export async function runPortfolioScenario(input: {
+  workspaceId: string;
+  title: string;
+  selectedInitiativeIds: string[];
+  budgetLimitDollars: number;
+  headcountLimit: number;
+  horizonMonths: number;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureMeridianFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          title: input.title.slice(0, 180),
+          selectedInitiativeIds: input.selectedInitiativeIds.slice(0, 25),
+          budgetLimitCents: Math.round(
+            Math.min(100_000_000, Math.max(0, input.budgetLimitDollars)) * 100,
+          ),
+          headcountLimit: Math.min(10_000, Math.max(0, input.headcountLimit)),
+          horizonMonths: Math.min(36, Math.max(3, input.horizonMonths)),
+        }),
+        async: false,
+        path: "/portfolio/simulate",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    scenario?: PortfolioScenarioRecord;
+    forecasts?: PortfolioForecastRecord[];
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Portfolio scenario returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.scenario ||
+    response.forecasts?.length !== 4
+  ) {
+    throw new Error(response?.error || execution.errors || "Portfolio scenario failed.");
+  }
+  return response;
+}
+
+export async function recordInvestmentDecision(input: {
+  workspaceId: string;
+  scenarioId: string;
+  decision: "hold" | "authorize";
+  rationale: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [scenario, capacity, initiatives, dependencies, forecasts] = await Promise.all([
+    appwrite.client.request<PortfolioScenarioRecord>(
+      `${base}/${appwriteTables.portfolioScenarios}/rows/${input.scenarioId}`,
+    ),
+    appwrite.client.request<CapacityEnvelopeRecord>(
+      `${base}/${appwriteTables.capacityEnvelopes}/rows/${capacityRowId(input.workspaceId)}`,
+    ),
+    appwrite.client.request<RowList<PortfolioInitiativeRecord>>(
+      `${base}/${appwriteTables.portfolioInitiatives}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<InitiativeDependencyRecord>>(
+      `${base}/${appwriteTables.initiativeDependencies}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<PortfolioForecastRecord>>(
+      `${base}/${appwriteTables.portfolioForecasts}/rows`,
+      { queries: [query.equal("scenarioId", input.scenarioId), query.limit(25)] },
+    ),
+  ]);
+  if (scenario.workspaceId !== input.workspaceId) {
+    throw new Error("The portfolio scenario is outside this workspace.");
+  }
+  const selectedIds = JSON.parse(scenario.selectedInitiativeIds || "[]") as string[];
+  const selected = initiatives.rows.filter((initiative) =>
+    selectedIds.includes(initiative.$id),
+  );
+  const goalIds = [...new Set(selected.map((initiative) => initiative.goalId))];
+  const goals = await appwrite.client.request<RowList<StrategicGoalRecord>>(
+    `${base}/${appwriteTables.strategicGoals}/rows`,
+    { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+  );
+  const blockers = [
+    selected.length > 0 ? null : "No initiatives are selected.",
+    goalIds.every((goalId) =>
+      goals.rows.some((goal) => goal.$id === goalId && goal.verified === 1),
+    )
+      ? null
+      : "One or more linked strategic goals are unverified.",
+    capacity.externalVerified === 1
+      ? null
+      : "Budget and headcount capacity are not externally verified.",
+    dependencies.rows
+      .filter((dependency) => selectedIds.includes(dependency.initiativeId))
+      .every((dependency) => dependency.resolved === 1)
+      ? null
+      : "Selected initiatives have unresolved dependencies.",
+    scenario.status === "verified"
+      ? null
+      : "The portfolio scenario is synthetic or unverified.",
+    forecasts.rows.length === 4 &&
+    forecasts.rows.every(
+      (forecast) => forecast.status === "verified" && forecast.confidenceBps >= 8000,
+    )
+      ? null
+      : "Decision-grade portfolio forecasts are not available.",
+  ].filter(Boolean);
+  if (input.decision === "authorize" && blockers.length) {
+    throw new Error(
+      `Investment cannot be authorized while evidence blockers remain: ${blockers.join(" ")}`,
+    );
+  }
+  const now = new Date().toISOString();
+  const decision = await appwrite.client.request<InvestmentDecisionRecord>(
+    `${base}/${appwriteTables.investmentDecisions}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          scenarioId: scenario.$id,
+          decision: input.decision,
+          status: "recorded_no_commitment",
+          rationale: input.rationale.trim().slice(0, 2000),
+          authorized: input.decision === "authorize" ? 1 : 0,
+          financialCommitmentCreated: 0,
+          externalActionsExecuted: 0,
+          decidedBy: input.email.toLowerCase(),
+          createdAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `portfolio.investment_decision.${input.decision}`,
+    targetType: "investment_decision",
+    targetId: decision.$id,
+    metadata: {
+      blockers: blockers.length,
+      financialCommitmentCreated: false,
+      externalActionsExecuted: false,
+    },
+  });
+  return decision;
 }

@@ -78,6 +78,13 @@ test("declares unique Appwrite foundation resources", () => {
       "scenario_simulations",
       "impact_forecasts",
       "memory_promotions",
+      "strategic_goals",
+      "portfolio_initiatives",
+      "initiative_dependencies",
+      "capacity_envelopes",
+      "portfolio_scenarios",
+      "portfolio_forecasts",
+      "investment_decisions",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -142,6 +149,13 @@ test("keeps every queried field indexed", () => {
   const scenarioSimulations = tables.find((table) => table.id === "scenario_simulations");
   const impactForecasts = tables.find((table) => table.id === "impact_forecasts");
   const memoryPromotions = tables.find((table) => table.id === "memory_promotions");
+  const strategicGoals = tables.find((table) => table.id === "strategic_goals");
+  const portfolioInitiatives = tables.find((table) => table.id === "portfolio_initiatives");
+  const initiativeDependencies = tables.find((table) => table.id === "initiative_dependencies");
+  const capacityEnvelopes = tables.find((table) => table.id === "capacity_envelopes");
+  const portfolioScenarios = tables.find((table) => table.id === "portfolio_scenarios");
+  const portfolioForecasts = tables.find((table) => table.id === "portfolio_forecasts");
+  const investmentDecisions = tables.find((table) => table.id === "investment_decisions");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -200,6 +214,13 @@ test("keeps every queried field indexed", () => {
   assert.ok(scenarioSimulations.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(impactForecasts.indexes.some((index) => index.key === "simulation_dimension_unique"));
   assert.ok(memoryPromotions.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(strategicGoals.indexes.some((index) => index.key === "workspace_title_unique"));
+  assert.ok(portfolioInitiatives.indexes.some((index) => index.key === "workspace_name_unique"));
+  assert.ok(initiativeDependencies.indexes.some((index) => index.key === "initiative_dependency_unique"));
+  assert.ok(capacityEnvelopes.indexes.some((index) => index.key === "workspace_period_unique"));
+  assert.ok(portfolioScenarios.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(portfolioForecasts.indexes.some((index) => index.key === "scenario_dimension_unique"));
+  assert.ok(investmentDecisions.indexes.some((index) => index.attributes.includes("createdAt")));
 });
 
 test("enforces approval and execution roles", () => {

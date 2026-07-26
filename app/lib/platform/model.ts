@@ -1041,6 +1041,131 @@ export type ContinuumOverview = {
   promotions: MemoryPromotionRecord[];
 };
 
+export type StrategicGoalRecord = {
+  $id: string;
+  workspaceId: string;
+  title: string;
+  pillar: string;
+  status: string;
+  metric: string;
+  targetValue: number;
+  unit: string;
+  priority: number;
+  verified: number;
+  evidence: string;
+  ownerEmail: string;
+  horizon: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PortfolioInitiativeRecord = {
+  $id: string;
+  workspaceId: string;
+  goalId: string;
+  name: string;
+  status: string;
+  stage: string;
+  proposedBudgetCents: number;
+  requiredHeadcount: number;
+  expectedImpact: string;
+  confidenceBps: number;
+  risk: string;
+  assumptions: string;
+  ownerEmail: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InitiativeDependencyRecord = {
+  $id: string;
+  workspaceId: string;
+  initiativeId: string;
+  dependsOnInitiativeId: string;
+  relationship: string;
+  status: string;
+  resolved: number;
+  evidence: string;
+  createdAt: string;
+};
+
+export type CapacityEnvelopeRecord = {
+  $id: string;
+  workspaceId: string;
+  period: string;
+  status: string;
+  budgetCents: number;
+  allocatedBudgetCents: number;
+  availableHeadcount: number;
+  allocatedHeadcount: number;
+  externalVerified: number;
+  source: string;
+  assumptions: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PortfolioScenarioRecord = {
+  $id: string;
+  workspaceId: string;
+  title: string;
+  status: string;
+  horizonMonths: number;
+  selectedInitiativeIds: string;
+  budgetLimitCents: number;
+  headcountLimit: number;
+  assumptions: string;
+  outcomeScore: number;
+  confidenceBps: number;
+  liveModelCalled: number;
+  customerDataUsed: number;
+  financialCommitmentCreated: number;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type PortfolioForecastRecord = {
+  $id: string;
+  workspaceId: string;
+  scenarioId: string;
+  dimension: string;
+  direction: string;
+  baselineValue: number;
+  projectedValueLow: number;
+  projectedValueHigh: number;
+  unit: string;
+  confidenceBps: number;
+  status: string;
+  evidence: string;
+  createdAt: string;
+};
+
+export type InvestmentDecisionRecord = {
+  $id: string;
+  workspaceId: string;
+  scenarioId: string;
+  decision: string;
+  status: string;
+  rationale: string;
+  authorized: number;
+  financialCommitmentCreated: number;
+  externalActionsExecuted: number;
+  decidedBy: string;
+  createdAt: string;
+};
+
+export type MeridianOverview = {
+  workspaceId: string;
+  goals: StrategicGoalRecord[];
+  initiatives: PortfolioInitiativeRecord[];
+  dependencies: InitiativeDependencyRecord[];
+  capacity: CapacityEnvelopeRecord;
+  scenarios: PortfolioScenarioRecord[];
+  forecasts: PortfolioForecastRecord[];
+  decisions: InvestmentDecisionRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

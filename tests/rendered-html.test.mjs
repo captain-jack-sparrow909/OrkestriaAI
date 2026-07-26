@@ -107,7 +107,7 @@ test("switches to native Appwrite authentication on Appwrite Sites", async () =>
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence", "/ensemble", "/continuum"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence", "/ensemble", "/continuum", "/meridian"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -343,7 +343,7 @@ test("ships the Phase 10 TrustGrid with truthful continuous trust and rollout ga
   assert.match(schema, /id: "service_health_updates"/);
   assert.match(schema, /id: "compliance_automations"/);
   assert.match(schema, /id: "regional_rollout_gates"/);
-  assert.match(chrome, /Phase 13 live/);
+  assert.match(chrome, /Phase 14 live/);
 });
 
 test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () => {
@@ -378,7 +378,7 @@ test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () =>
   assert.match(schema, /id: "customer_outcomes"/);
   assert.match(schema, /id: "policy_recommendations"/);
   assert.match(schema, /id: "autonomy_decisions"/);
-  assert.match(chrome, /Phase 13 live/);
+  assert.match(chrome, /Phase 14 live/);
 });
 
 test("ships Phase 12 Ensemble with bounded collaborative decisioning", async () => {
@@ -415,7 +415,7 @@ test("ships Phase 12 Ensemble with bounded collaborative decisioning", async () 
   assert.match(schema, /id: "executive_briefs"/);
   assert.match(schema, /id: "executive_decisions"/);
   assert.match(chrome, /active === "ensemble"/);
-  assert.match(chrome, /Phase 13 live/);
+  assert.match(chrome, /Phase 14 live/);
 });
 
 test("ships Phase 13 Continuum with truthful organizational memory and digital twins", async () => {
@@ -453,7 +453,45 @@ test("ships Phase 13 Continuum with truthful organizational memory and digital t
   assert.match(schema, /id: "impact_forecasts"/);
   assert.match(schema, /id: "memory_promotions"/);
   assert.match(chrome, /active === "continuum"/);
-  assert.match(chrome, /Phase 13 live/);
+  assert.match(chrome, /Phase 14 live/);
+});
+
+test("ships Phase 14 Meridian with evidence-gated portfolio intelligence", async () => {
+  const [meridian, route, repository, orchestrator, schema, chrome] =
+    await Promise.all([
+      readFile(new URL("../app/meridian/MeridianStudio.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/meridian/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+      readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+      readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+      readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+    ]);
+
+  assert.match(meridian, /Choose the path/);
+  assert.match(meridian, /Propose initiative/);
+  assert.match(meridian, /Dependency map/);
+  assert.match(meridian, /Update planning envelope/);
+  assert.match(meridian, /Run portfolio scenario/);
+  assert.match(meridian, /Investment decision gate/);
+  assert.match(route, /propose_initiative/);
+  assert.match(route, /run_scenario/);
+  assert.match(route, /record_decision/);
+  assert.match(repository, /planning_assumption/);
+  assert.match(repository, /Investment cannot be authorized while evidence blockers remain/);
+  assert.match(repository, /status: "recorded_no_commitment"/);
+  assert.match(orchestrator, /path === "\/portfolio\/simulate"/);
+  assert.match(orchestrator, /deterministic_portfolio_fixture/);
+  assert.match(orchestrator, /financialCommitmentCreated: 0/);
+  assert.match(orchestrator, /externalActionsExecuted: false/);
+  assert.match(schema, /id: "strategic_goals"/);
+  assert.match(schema, /id: "portfolio_initiatives"/);
+  assert.match(schema, /id: "initiative_dependencies"/);
+  assert.match(schema, /id: "capacity_envelopes"/);
+  assert.match(schema, /id: "portfolio_scenarios"/);
+  assert.match(schema, /id: "portfolio_forecasts"/);
+  assert.match(schema, /id: "investment_decisions"/);
+  assert.match(chrome, /active === "meridian"/);
+  assert.match(chrome, /Phase 14 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {
