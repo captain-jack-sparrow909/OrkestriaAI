@@ -17,7 +17,7 @@ export function WorkspaceChrome({
   children,
 }: {
   user: ChatGPTUser;
-  active: "overview" | "vela" | "loom" | "tempo" | "helio" | "aegis";
+  active: "overview" | "vela" | "loom" | "tempo" | "helio" | "aegis" | "enterprise";
   title: string;
   children: ReactNode;
 }) {
@@ -37,7 +37,7 @@ export function WorkspaceChrome({
         </Link>
         <div className="workspace-switcher">
           <span className="workspace-avatar">N</span>
-          <span><strong>Northstar Labs</strong><small>Phase 4 workspace</small></span>
+          <span><strong>Northstar Labs</strong><small>Enterprise workspace</small></span>
           <b>⌄</b>
         </div>
         <nav className="app-nav" aria-label="Workspace">
@@ -47,6 +47,9 @@ export function WorkspaceChrome({
           </Link>
           <Link href="/dashboard#approvals"><i>!</i><span>Approvals</span></Link>
           <Link href="/dashboard#runs"><i>↗</i><span>Runs</span></Link>
+          <Link className={active === "enterprise" ? "active" : ""} href="/enterprise">
+            <i className="enterprise-nav-mark">◇</i><span>Enterprise</span>
+          </Link>
           <span className="app-nav-label">Agents</span>
           {agents.map((agent) => agent.live ? (
             <Link
@@ -67,7 +70,7 @@ export function WorkspaceChrome({
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <Link href="/security">⌾ <span>Governance</span></Link>
+          <Link href="/enterprise">⌾ <span>Governance</span></Link>
           <Link href="/products">⚙ <span>Connections</span></Link>
           <a href="/signout-with-chatgpt?return_to=%2F">↪ <span>Sign out</span></a>
         </div>
@@ -80,7 +83,7 @@ export function WorkspaceChrome({
             <strong>{title}</strong>
           </div>
           <div className="topbar-actions">
-            <span className="phase-live"><i />Phase 4 live</span>
+            <span className="phase-live"><i />Phase 5 live</span>
             <div className="user-chip">
               <span>{initials}</span>
               <p><strong>{user.displayName}</strong><small>Owner</small></p>

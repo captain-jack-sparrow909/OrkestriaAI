@@ -152,7 +152,7 @@ export function DashboardClient({
         </Link>
         <div className="workspace-switcher">
           <span className="workspace-avatar">N</span>
-          <span><strong>Northstar Labs</strong><small>Orchestrate plan</small></span>
+          <span><strong>Northstar Labs</strong><small>Enterprise workspace</small></span>
           <b>⌄</b>
         </div>
         <nav className="app-nav" aria-label="Command center">
@@ -168,6 +168,7 @@ export function DashboardClient({
               {item === "Approvals" && <em>{approvals.length}</em>}
             </button>
           ))}
+          <Link href="/enterprise"><i className="enterprise-nav-mark">◇</i><span>Enterprise</span></Link>
           <span className="app-nav-label">Agents</span>
           {[
             ["V", "Vela", "violet", "/vela"],
@@ -180,7 +181,7 @@ export function DashboardClient({
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <Link href="/security">⌾ <span>Governance</span></Link>
+          <Link href="/enterprise">⌾ <span>Governance</span></Link>
           <Link href="/products">⚙ <span>Connections</span></Link>
           <a href="/signout-with-chatgpt?return_to=%2F">↪ <span>Sign out</span></a>
         </div>

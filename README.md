@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes ten TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes fourteen TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,12 +62,13 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 4 adds Helio Cloud Financial Intelligence to Vela, Loom, Tempo, and
-Aegis. Helio ingests billing and utilization evidence, identifies cost
-anomalies and realistic optimization opportunities, persists each analysis and
-recommendation, and keeps identified, approved, and realized savings distinct.
-Every consequential cloud change remains behind the shared approval controls.
+Phase 5 adds the Enterprise Control Center to the five-agent suite. It provides
+durable identity readiness, custom least-privilege roles, regional data
+boundaries, private-network readiness, deterministic policy packs, downloadable
+compliance evidence, and enterprise service targets. All owner changes and
+evidence generation are attributed in the shared audit trail, while external
+SAML, SCIM, and private-network connections remain explicitly unverified until
+their real handshakes complete.
 
-**Next phase:** Enterprise scale — SAML/SCIM, custom roles, regional data
-residency, private networking, policy packs, compliance exports, and enterprise
-SLAs.
+**Next phase:** Ecosystem expansion — connector marketplace, partner SDK,
+vertical policy packs, and continuous product intelligence.

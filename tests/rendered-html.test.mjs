@@ -58,7 +58,7 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -118,6 +118,30 @@ test("ships the Phase 4 Helio studio with durable conservative savings", async (
   assert.match(schema, /id: "savings_opportunities"/);
   assert.match(deepseek, /avoid double counting/);
   assert.match(deepseek, /Math\.min\(\s*currentMonthlyCost/);
+});
+
+test("ships the Phase 5 enterprise trust fabric with durable governance", async () => {
+  const [studio, route, repository, schema, chrome] = await Promise.all([
+    readFile(new URL("../app/enterprise/EnterpriseStudio.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/enterprise/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(studio, /Govern every agent/);
+  assert.match(studio, /Connection truth/);
+  assert.match(studio, /Custom access roles/);
+  assert.match(studio, /Compliance evidence/);
+  assert.match(route, /request_export/);
+  assert.match(route, /Content-Disposition/);
+  assert.match(repository, /requireEnterpriseOwner/);
+  assert.match(repository, /enterprise\.policy\.mode_changed/);
+  assert.match(schema, /id: "enterprise_configs"/);
+  assert.match(schema, /id: "custom_roles"/);
+  assert.match(schema, /id: "policy_packs"/);
+  assert.match(schema, /id: "compliance_exports"/);
+  assert.match(chrome, /Phase 5 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

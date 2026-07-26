@@ -106,6 +106,74 @@ export type MembershipRecord = {
   status: "active" | "invited" | "suspended";
 };
 
+export type EnterpriseConfigRecord = {
+  $id: string;
+  workspaceId: string;
+  identityMode: string;
+  primaryDomain?: string;
+  domainStatus: string;
+  scimStatus: string;
+  lastScimSyncAt?: string;
+  dataRegion: string;
+  residencyMode: string;
+  privateNetworkStatus: string;
+  privateNetworkProvider: string;
+  slaTier: string;
+  supportStatus: string;
+  settings: string;
+  updatedBy: string;
+  updatedAt: string;
+};
+
+export type CustomRoleRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  description: string;
+  capabilities: string;
+  status: string;
+  memberCount: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PolicyPackRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  framework: string;
+  version: string;
+  mode: "monitor" | "enforce";
+  status: string;
+  rulesCount: number;
+  coverage: number;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ComplianceExportRecord = {
+  $id: string;
+  workspaceId: string;
+  framework: string;
+  format: string;
+  status: string;
+  period: string;
+  checksum?: string;
+  requestedBy: string;
+  createdAt: string;
+  completedAt?: string;
+};
+
+export type EnterpriseOverview = {
+  workspaceId: string;
+  config: EnterpriseConfigRecord;
+  roles: CustomRoleRecord[];
+  policies: PolicyPackRecord[];
+  exports: ComplianceExportRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

@@ -9,6 +9,10 @@ export const appwriteTables = {
   rateLimits: "rate_limits",
   costAnalyses: "cost_analyses",
   savingsOpportunities: "savings_opportunities",
+  enterpriseConfigs: "enterprise_configs",
+  customRoles: "custom_roles",
+  policyPacks: "policy_packs",
+  complianceExports: "compliance_exports",
 } as const;
 
 export type AppwriteServerConfig = {

@@ -25,6 +25,10 @@ test("declares unique Appwrite foundation resources", () => {
       "rate_limits",
       "cost_analyses",
       "savings_opportunities",
+      "enterprise_configs",
+      "custom_roles",
+      "policy_packs",
+      "compliance_exports",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -36,11 +40,19 @@ test("keeps every queried field indexed", () => {
   const memberships = tables.find((table) => table.id === "memberships");
   const approvals = tables.find((table) => table.id === "approvals");
   const jobs = tables.find((table) => table.id === "jobs");
+  const enterpriseConfigs = tables.find((table) => table.id === "enterprise_configs");
+  const customRoles = tables.find((table) => table.id === "custom_roles");
+  const policyPacks = tables.find((table) => table.id === "policy_packs");
+  const complianceExports = tables.find((table) => table.id === "compliance_exports");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
   assert.ok(approvals.indexes.some((index) => index.attributes.includes("state")));
   assert.ok(jobs.indexes.some((index) => index.key === "idempotency_unique"));
+  assert.ok(enterpriseConfigs.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(customRoles.indexes.some((index) => index.key === "workspace_name_unique"));
+  assert.ok(policyPacks.indexes.some((index) => index.attributes.includes("workspaceId")));
+  assert.ok(complianceExports.indexes.some((index) => index.attributes.includes("createdAt")));
 });
 
 test("enforces approval and execution roles", () => {

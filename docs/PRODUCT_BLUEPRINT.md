@@ -106,6 +106,10 @@ Recommended additions for the product app:
 | `incidents` | Tempo incidents | service, severity, cause, evidence, state |
 | `cost_analyses` | Helio portfolio analysis | provider, period, spend, forecast, savings |
 | `savings_opportunities` | Helio recommendations | resource, savings, confidence, risk, status |
+| `enterprise_configs` | Enterprise trust posture | identity, region, network, SLA, retention |
+| `custom_roles` | Least-privilege role definitions | capabilities, members, status, owner |
+| `policy_packs` | Deterministic governance controls | framework, version, mode, coverage |
+| `compliance_exports` | Point-in-time evidence manifests | framework, period, checksum, requester |
 | `security_findings` | Aegis findings | fingerprint, severity, CWE, fix, state |
 | `browser_sessions` | Vela sessions | state, domainPolicy, expiresAt |
 | `notifications` | User inbox | userId, type, readAt, entityRef |
@@ -215,6 +219,15 @@ regional controls for larger organizations.
 
 SAML/SCIM, custom roles, regional data residency, private networking, policy
 packs, compliance exports, marketplace connectors, and enterprise SLAs.
+
+**Implementation status:** The Enterprise Control Center ships as an
+authenticated governance surface backed by four Appwrite tables. Workspace
+owners can manage regional boundaries, create bounded custom roles, move policy
+packs between monitor and enforce modes, and generate attributable JSON
+evidence bundles. Identity federation, directory provisioning, and private
+network cards distinguish configuration readiness from a verified external
+connection. Every mutation is workspace-authorized and written to the shared
+audit trail; model output cannot override deterministic policy.
 
 **Next phase:** Ecosystem expansion — launch the connector marketplace,
 partner SDK, vertical policy packs, and continuous product intelligence.
