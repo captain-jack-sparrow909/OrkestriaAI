@@ -61,6 +61,14 @@ import {
   type ExecutiveBriefRecord,
   type ExecutiveDecisionRecord,
   type EnsembleOverview,
+  type MemoryEntityRecord,
+  type MemoryEventRecord,
+  type KnowledgeClaimRecord,
+  type TwinSnapshotRecord,
+  type ScenarioSimulationRecord,
+  type ImpactForecastRecord,
+  type MemoryPromotionRecord,
+  type ContinuumOverview,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -4756,4 +4764,598 @@ export async function recordExecutiveDecision(input: {
     },
   });
   return decision;
+}
+
+function memoryEntityRowId(kind: string, workspaceId: string) {
+  return enterpriseRowId(`memory_${kind}`, workspaceId);
+}
+
+function baselineClaimRowId(workspaceId: string) {
+  return enterpriseRowId("memory_claim", workspaceId);
+}
+
+function baselineTwinRowId(workspaceId: string) {
+  return enterpriseRowId("twin_seed", workspaceId);
+}
+
+async function ensureContinuumFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureEnsembleFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const entities = [
+    {
+      kind: "platform",
+      type: "platform",
+      name: "Orkestria control plane",
+      attributes: { scope: "workspace_configuration", lifecycle: "active" },
+    },
+    {
+      kind: "browser",
+      type: "capability",
+      name: "Browser operations",
+      attributes: { agent: "vela", boundary: "approval_gated" },
+    },
+    {
+      kind: "workflow",
+      type: "capability",
+      name: "Workflow automation",
+      attributes: { agent: "loom", boundary: "approval_gated" },
+    },
+    {
+      kind: "cloud",
+      type: "operating_domain",
+      name: "Cloud estate",
+      attributes: { agents: ["tempo", "helio"], liveInventoryConnected: false },
+    },
+    {
+      kind: "security",
+      type: "operating_domain",
+      name: "Security posture",
+      attributes: { agent: "aegis", liveScannerConnected: false },
+    },
+  ];
+  for (const entity of entities) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.memoryEntities}/rows`, {
+      rowId: memoryEntityRowId(entity.kind, workspace.workspaceId),
+      data: {
+        workspaceId: workspace.workspaceId,
+        entityType: entity.type,
+        name: entity.name,
+        status: "configuration_only",
+        aliases: "[]",
+        attributes: JSON.stringify({
+          ...entity.attributes,
+          source: "orkestria_workspace_configuration",
+          productionObservationClaimed: false,
+        }),
+        sourceCount: 1,
+        verifiedSourceCount: 0,
+        confidenceBps: 2500,
+        sensitive: 0,
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+  await createIfMissing(appwrite, `${base}/${appwriteTables.knowledgeClaims}/rows`, {
+    rowId: baselineClaimRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      entityId: memoryEntityRowId("platform", workspace.workspaceId),
+      predicate: "consequential_actions_require_approval",
+      value: "Purchases, submissions, production changes, and sensitive actions remain human-gated.",
+      status: "policy_assertion_unverified",
+      confidenceBps: 6000,
+      evidenceRefs: JSON.stringify(["policy://approval-boundaries"]),
+      promoted: 0,
+      createdBy: email.toLowerCase(),
+      validFrom: now,
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await createIfMissing(appwrite, `${base}/${appwriteTables.twinSnapshots}/rows`, {
+    rowId: baselineTwinRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      status: "configuration_only",
+      observedEntityCount: 0,
+      verifiedClaimCount: 0,
+      staleClaimCount: 0,
+      completenessBps: 0,
+      model: "continuum_v1",
+      evidence: JSON.stringify({
+        configurationEntities: entities.length,
+        productionObservations: 0,
+        verifiedClaims: 0,
+        externalSystemsQueried: false,
+        customerDataUsed: false,
+        decisionReady: false,
+      }),
+      synthetic: 0,
+      createdAt: now,
+    },
+    permissions: [],
+  });
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 13,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+            continuousTrust: true,
+            adaptiveAutonomy: true,
+            collaborativeDecisioning: true,
+            organizationalMemory: true,
+            operationalTwin: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+export async function getContinuumOverview(
+  email: string,
+  displayName: string,
+): Promise<ContinuumOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureContinuumFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view organizational memory.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const recent = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.orderDesc("createdAt"),
+    query.limit(100),
+  ];
+  const [entities, events, claims, snapshots, simulations, forecasts, promotions] =
+    await Promise.all([
+      appwrite.client.request<RowList<MemoryEntityRecord>>(
+        `${base}/${appwriteTables.memoryEntities}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderAsc("name"),
+            query.limit(100),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<MemoryEventRecord>>(
+        `${base}/${appwriteTables.memoryEvents}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("recordedAt"),
+            query.limit(100),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<KnowledgeClaimRecord>>(
+        `${base}/${appwriteTables.knowledgeClaims}/rows`,
+        { queries: recent },
+      ),
+      appwrite.client.request<RowList<TwinSnapshotRecord>>(
+        `${base}/${appwriteTables.twinSnapshots}/rows`,
+        { queries: recent },
+      ),
+      appwrite.client.request<RowList<ScenarioSimulationRecord>>(
+        `${base}/${appwriteTables.scenarioSimulations}/rows`,
+        { queries: recent },
+      ),
+      appwrite.client.request<RowList<ImpactForecastRecord>>(
+        `${base}/${appwriteTables.impactForecasts}/rows`,
+        { queries: recent },
+      ),
+      appwrite.client.request<RowList<MemoryPromotionRecord>>(
+        `${base}/${appwriteTables.memoryPromotions}/rows`,
+        { queries: recent },
+      ),
+    ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    entities: entities.rows,
+    events: events.rows,
+    claims: claims.rows,
+    snapshots: snapshots.rows,
+    simulations: simulations.rows,
+    forecasts: forecasts.rows,
+    promotions: promotions.rows,
+  };
+}
+
+export async function captureMemoryEvent(input: {
+  workspaceId: string;
+  entityId: string;
+  eventType: string;
+  summary: string;
+  occurredAt: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "agents.run")) {
+    throw new Error("You do not have permission to capture organizational events.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const entity = await appwrite.client.request<MemoryEntityRecord>(
+    `${base}/${appwriteTables.memoryEntities}/rows/${input.entityId}`,
+  );
+  if (entity.workspaceId !== input.workspaceId) {
+    throw new Error("The selected entity is outside this workspace.");
+  }
+  const now = new Date().toISOString();
+  const event = await appwrite.client.request<MemoryEventRecord>(
+    `${base}/${appwriteTables.memoryEvents}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          entityId: entity.$id,
+          eventType: input.eventType.trim().slice(0, 64),
+          status: "self_reported_unverified",
+          summary: input.summary.trim().slice(0, 2000),
+          facts: JSON.stringify({
+            userSupplied: true,
+            independentlyVerified: false,
+            productionQualityClaimed: false,
+          }),
+          sourceType: "workspace_user",
+          sourceId: input.email.toLowerCase(),
+          verified: 0,
+          synthetic: 0,
+          occurredAt: new Date(input.occurredAt || now).toISOString(),
+          recordedAt: now,
+          recordedBy: input.email.toLowerCase(),
+        },
+        permissions: [],
+      },
+    },
+  );
+  await appwrite.client.request(
+    `${base}/${appwriteTables.memoryEntities}/rows/${entity.$id}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          sourceCount: entity.sourceCount + 1,
+          status: "unverified_observation",
+          updatedAt: now,
+        },
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "memory.event.captured",
+    targetType: "memory_event",
+    targetId: event.$id,
+    metadata: { verified: false, synthetic: false, knowledgePromoted: false },
+  });
+  return event;
+}
+
+export async function proposeKnowledgeClaim(input: {
+  workspaceId: string;
+  entityId: string;
+  predicate: string;
+  value: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const entity = await appwrite.client.request<MemoryEntityRecord>(
+    `${base}/${appwriteTables.memoryEntities}/rows/${input.entityId}`,
+  );
+  if (entity.workspaceId !== input.workspaceId) {
+    throw new Error("The selected entity is outside this workspace.");
+  }
+  const now = new Date().toISOString();
+  const claim = await appwrite.client.request<KnowledgeClaimRecord>(
+    `${base}/${appwriteTables.knowledgeClaims}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          entityId: entity.$id,
+          predicate: input.predicate.trim().slice(0, 128),
+          value: input.value.trim().slice(0, 4000),
+          status: "proposed_unverified",
+          confidenceBps: 2500,
+          evidenceRefs: "[]",
+          promoted: 0,
+          createdBy: input.email.toLowerCase(),
+          validFrom: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "memory.claim.proposed",
+    targetType: "knowledge_claim",
+    targetId: claim.$id,
+    metadata: { verified: false, promoted: false },
+  });
+  return claim;
+}
+
+export async function refreshTwinSnapshot(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [entities, claims, events] = await Promise.all([
+    appwrite.client.request<RowList<MemoryEntityRecord>>(
+      `${base}/${appwriteTables.memoryEntities}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<KnowledgeClaimRecord>>(
+      `${base}/${appwriteTables.knowledgeClaims}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<MemoryEventRecord>>(
+      `${base}/${appwriteTables.memoryEvents}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+  ]);
+  const observedEntityCount = entities.rows.filter(
+    (entity) => entity.verifiedSourceCount > 0,
+  ).length;
+  const verifiedClaimCount = claims.rows.filter(
+    (claim) => claim.status === "verified" && claim.confidenceBps >= 8000,
+  ).length;
+  const staleClaimCount = claims.rows.filter(
+    (claim) => claim.validTo && new Date(claim.validTo).getTime() < Date.now(),
+  ).length;
+  const completenessBps = Math.min(
+    10000,
+    Math.round(
+      ((observedEntityCount + verifiedClaimCount) /
+        Math.max(1, entities.rows.length + claims.rows.length)) *
+        10000,
+    ),
+  );
+  const now = new Date().toISOString();
+  const snapshot = await appwrite.client.request<TwinSnapshotRecord>(
+    `${base}/${appwriteTables.twinSnapshots}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          status:
+            completenessBps >= 8000 && staleClaimCount === 0
+              ? "decision_grade"
+              : observedEntityCount > 0
+                ? "partial_observed"
+                : "insufficient_evidence",
+          observedEntityCount,
+          verifiedClaimCount,
+          staleClaimCount,
+          completenessBps,
+          model: "continuum_v1",
+          evidence: JSON.stringify({
+            durableEntityRows: entities.rows.length,
+            durableEventRows: events.rows.length,
+            durableClaimRows: claims.rows.length,
+            verifiedEvents: events.rows.filter((event) => event.verified === 1).length,
+            externalSystemsQueried: false,
+            customerDataUsed: false,
+            missingEvidencePreserved: true,
+          }),
+          synthetic: 0,
+          createdAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "memory.twin.refreshed",
+    targetType: "twin_snapshot",
+    targetId: snapshot.$id,
+    metadata: {
+      completenessBps,
+      externalSystemsQueried: false,
+      knowledgeChanged: false,
+    },
+  });
+  return snapshot;
+}
+
+export async function runTwinSimulation(input: {
+  workspaceId: string;
+  snapshotId: string;
+  title: string;
+  changeSet: string;
+  horizonDays: number;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureContinuumFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          snapshotId: input.snapshotId,
+          title: input.title.slice(0, 180),
+          changeSet: input.changeSet.slice(0, 4000),
+          horizonDays: Math.min(180, Math.max(7, input.horizonDays)),
+        }),
+        async: false,
+        path: "/memory/simulate",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    simulation?: ScenarioSimulationRecord;
+    forecasts?: ImpactForecastRecord[];
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Twin simulation returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.simulation ||
+    response.forecasts?.length !== 4
+  ) {
+    throw new Error(response?.error || execution.errors || "Twin simulation failed.");
+  }
+  return response;
+}
+
+export async function recordMemoryPromotion(input: {
+  workspaceId: string;
+  claimId: string;
+  decision: "hold" | "promote" | "reject";
+  rationale: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [claim, snapshots] = await Promise.all([
+    appwrite.client.request<KnowledgeClaimRecord>(
+      `${base}/${appwriteTables.knowledgeClaims}/rows/${input.claimId}`,
+    ),
+    appwrite.client.request<RowList<TwinSnapshotRecord>>(
+      `${base}/${appwriteTables.twinSnapshots}/rows`,
+      {
+        queries: [
+          query.equal("workspaceId", input.workspaceId),
+          query.orderDesc("createdAt"),
+          query.limit(1),
+        ],
+      },
+    ),
+  ]);
+  if (claim.workspaceId !== input.workspaceId) {
+    throw new Error("The knowledge claim is outside this workspace.");
+  }
+  const snapshot = snapshots.rows[0];
+  const evidenceRefs = JSON.parse(claim.evidenceRefs || "[]") as string[];
+  const blockers = [
+    claim.status === "verified" ? null : "The claim has not been independently verified.",
+    claim.confidenceBps >= 8000 ? null : "Claim confidence is below the promotion threshold.",
+    evidenceRefs.length >= 2 ? null : "At least two independent evidence references are required.",
+    snapshot?.status === "decision_grade" ? null : "The current operational twin is not decision-grade.",
+    snapshot?.staleClaimCount === 0 ? null : "The current twin contains stale claims.",
+  ].filter(Boolean);
+  if (input.decision === "promote" && blockers.length) {
+    throw new Error(
+      `Knowledge cannot be promoted while evidence blockers remain: ${blockers.join(" ")}`,
+    );
+  }
+  const now = new Date().toISOString();
+  if (input.decision === "promote") {
+    await appwrite.client.request(
+      `${base}/${appwriteTables.knowledgeClaims}/rows/${claim.$id}`,
+      {
+        method: "PATCH",
+        body: {
+          data: {
+            status: "promoted_verified",
+            promoted: 1,
+            updatedAt: now,
+          },
+        },
+      },
+    );
+  }
+  const promotion = await appwrite.client.request<MemoryPromotionRecord>(
+    `${base}/${appwriteTables.memoryPromotions}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          claimId: claim.$id,
+          decision: input.decision,
+          status:
+            input.decision === "promote"
+              ? "promoted_to_memory"
+              : "recorded_no_change",
+          rationale: input.rationale.trim().slice(0, 2000),
+          authorized: input.decision === "promote" ? 1 : 0,
+          knowledgeBaseChanged: input.decision === "promote" ? 1 : 0,
+          externalActionsExecuted: 0,
+          decidedBy: input.email.toLowerCase(),
+          createdAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `memory.promotion.${input.decision}`,
+    targetType: "memory_promotion",
+    targetId: promotion.$id,
+    metadata: {
+      claimId: claim.$id,
+      blockers: blockers.length,
+      knowledgeBaseChanged: promotion.knowledgeBaseChanged === 1,
+      externalActionsExecuted: false,
+    },
+  });
+  return promotion;
 }

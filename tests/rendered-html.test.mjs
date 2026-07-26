@@ -107,7 +107,7 @@ test("switches to native Appwrite authentication on Appwrite Sites", async () =>
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence", "/ensemble"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence", "/ensemble", "/continuum"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -343,7 +343,7 @@ test("ships the Phase 10 TrustGrid with truthful continuous trust and rollout ga
   assert.match(schema, /id: "service_health_updates"/);
   assert.match(schema, /id: "compliance_automations"/);
   assert.match(schema, /id: "regional_rollout_gates"/);
-  assert.match(chrome, /Phase 12 live/);
+  assert.match(chrome, /Phase 13 live/);
 });
 
 test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () => {
@@ -378,7 +378,7 @@ test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () =>
   assert.match(schema, /id: "customer_outcomes"/);
   assert.match(schema, /id: "policy_recommendations"/);
   assert.match(schema, /id: "autonomy_decisions"/);
-  assert.match(chrome, /Phase 12 live/);
+  assert.match(chrome, /Phase 13 live/);
 });
 
 test("ships Phase 12 Ensemble with bounded collaborative decisioning", async () => {
@@ -415,7 +415,45 @@ test("ships Phase 12 Ensemble with bounded collaborative decisioning", async () 
   assert.match(schema, /id: "executive_briefs"/);
   assert.match(schema, /id: "executive_decisions"/);
   assert.match(chrome, /active === "ensemble"/);
-  assert.match(chrome, /Phase 12 live/);
+  assert.match(chrome, /Phase 13 live/);
+});
+
+test("ships Phase 13 Continuum with truthful organizational memory and digital twins", async () => {
+  const [continuum, route, repository, orchestrator, schema, chrome] =
+    await Promise.all([
+      readFile(new URL("../app/continuum/ContinuumStudio.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/continuum/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+      readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+      readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+      readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+    ]);
+
+  assert.match(continuum, /Remember the truth/);
+  assert.match(continuum, /Capture event/);
+  assert.match(continuum, /Propose knowledge claim/);
+  assert.match(continuum, /Reconstruct twin snapshot/);
+  assert.match(continuum, /Run advisory simulation/);
+  assert.match(continuum, /Memory promotion gate/);
+  assert.match(route, /capture_event/);
+  assert.match(route, /run_simulation/);
+  assert.match(route, /record_promotion/);
+  assert.match(repository, /self_reported_unverified/);
+  assert.match(repository, /Knowledge cannot be promoted while evidence blockers remain/);
+  assert.match(repository, /externalSystemsQueried: false/);
+  assert.match(orchestrator, /path === "\/memory\/simulate"/);
+  assert.match(orchestrator, /deterministic_reference_fixture/);
+  assert.match(orchestrator, /knowledgeBaseChanged: false/);
+  assert.match(orchestrator, /externalActionsExecuted: 0/);
+  assert.match(schema, /id: "memory_entities"/);
+  assert.match(schema, /id: "memory_events"/);
+  assert.match(schema, /id: "knowledge_claims"/);
+  assert.match(schema, /id: "twin_snapshots"/);
+  assert.match(schema, /id: "scenario_simulations"/);
+  assert.match(schema, /id: "impact_forecasts"/);
+  assert.match(schema, /id: "memory_promotions"/);
+  assert.match(chrome, /active === "continuum"/);
+  assert.match(chrome, /Phase 13 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

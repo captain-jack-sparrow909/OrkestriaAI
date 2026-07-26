@@ -77,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "collaborative_decisioning",
+      phase: "organizational_memory",
       requestId,
     });
   }
@@ -1217,6 +1217,193 @@ async function orchestrator({ req, res, log, error }) {
         externalActionsExecuted: false,
       });
       return res.json({ mission: updatedCase, handoffs, synthesis, brief, requestId });
+    }
+
+    if (path === "/memory/simulate" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const snapshotId = String(body.snapshotId || "").slice(0, 36);
+      const title = String(body.title || "").trim().slice(0, 180);
+      const changeSet = String(body.changeSet || "").trim().slice(0, 4000);
+      const horizonDays = Math.min(180, Math.max(7, Number(body.horizonDays) || 30));
+      if (!workspaceId || !snapshotId || !title || !changeSet) {
+        return res.json(
+          { error: "workspaceId, snapshotId, title, and changeSet are required", requestId },
+          400,
+        );
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json({ error: "Twin simulations are not allowed for this role", requestId }, 403);
+      }
+      const snapshot = await tables.getRow({
+        databaseId: DATABASE_ID,
+        tableId: "twin_snapshots",
+        rowId: snapshotId,
+      });
+      if (snapshot.workspaceId !== workspaceId) {
+        return res.json({ error: "The twin snapshot is outside this workspace", requestId }, 409);
+      }
+
+      const completedAt = new Date();
+      const confidenceBps = snapshot.status === "decision_grade" ? 6200 : 2200;
+      const assumptions = [
+        "The change is modeled as an advisory scenario only.",
+        "Baseline values are deterministic reference indices, not observed production metrics.",
+        "No live model, customer data, cloud inventory, deployment, or external provider was used.",
+        "Forecast ranges express uncertainty and are not guaranteed outcomes.",
+      ];
+      const simulation = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "scenario_simulations",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          snapshotId,
+          title,
+          status: "synthetic_advisory",
+          horizonDays,
+          changeSet: JSON.stringify({
+            description: changeSet,
+            appliedToTwin: false,
+            appliedToProduction: false,
+          }),
+          assumptions: JSON.stringify(assumptions),
+          projectedImpact: JSON.stringify({
+            dimensions: ["reliability", "cost", "security", "change_load"],
+            recommendation: "Use the ranges to frame questions, not authorize action.",
+            productionForecastClaimed: false,
+          }),
+          confidenceBps,
+          liveModelCalled: 0,
+          customerDataUsed: 0,
+          externalActionsExecuted: 0,
+          createdBy: membership.userEmail,
+          createdAt: completedAt.toISOString(),
+        },
+        permissions: [],
+      });
+      const dimensions = [
+        {
+          dimension: "reliability",
+          direction: "uncertain",
+          baseline: 9950,
+          low: 9910,
+          high: 9970,
+          unit: "basis_points",
+        },
+        {
+          dimension: "cost",
+          direction: "uncertain",
+          baseline: 100,
+          low: 91,
+          high: 108,
+          unit: "index",
+        },
+        {
+          dimension: "security",
+          direction: "risk_up",
+          baseline: 20,
+          low: 18,
+          high: 32,
+          unit: "risk_index",
+        },
+        {
+          dimension: "change_load",
+          direction: "up",
+          baseline: 10,
+          low: 12,
+          high: 18,
+          unit: "changes_week",
+        },
+      ];
+      const forecasts = await Promise.all(
+        dimensions.map((dimension) =>
+          tables.createRow({
+            databaseId: DATABASE_ID,
+            tableId: "impact_forecasts",
+            rowId: ID.unique(),
+            data: {
+              workspaceId,
+              simulationId: simulation.$id,
+              dimension: dimension.dimension,
+              direction: dimension.direction,
+              baselineValue: dimension.baseline,
+              projectedValueLow: dimension.low,
+              projectedValueHigh: dimension.high,
+              unit: dimension.unit,
+              confidenceBps,
+              status: "synthetic_range",
+              evidence: JSON.stringify({
+                basis: "deterministic_reference_fixture",
+                observedProductionMetric: false,
+                decisionEvidence: false,
+                externalSystemsQueried: false,
+              }),
+              createdAt: completedAt.toISOString(),
+            },
+            permissions: [],
+          }),
+        ),
+      );
+      await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "twin_simulation",
+            quantity: forecasts.length,
+            unit: "impact_dimension",
+            sourceType: "scenario_simulation",
+            sourceId: simulation.$id,
+            period: completedAt.toISOString().slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `twin-simulation:${simulation.$id}`,
+            recordedAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "audit_events",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            actorEmail: membership.userEmail,
+            action: "memory.twin_simulation.completed",
+            targetType: "scenario_simulation",
+            targetId: simulation.$id,
+            outcome: "success",
+            metadata: JSON.stringify({
+              snapshotId,
+              impactDimensions: forecasts.length,
+              synthetic: true,
+              liveModelCalled: false,
+              customerDataUsed: false,
+              externalActionsExecuted: false,
+              knowledgeBaseChanged: false,
+              requestId,
+            }),
+            occurredAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      audit(log, {
+        requestId,
+        event: "memory.twin_simulation.completed",
+        workspaceId,
+        snapshotId,
+        simulationId: simulation.$id,
+        impactDimensions: forecasts.length,
+        synthetic: true,
+        liveModelCalled: false,
+        customerDataUsed: false,
+        externalActionsExecuted: false,
+        knowledgeBaseChanged: false,
+      });
+      return res.json({ simulation, forecasts, requestId });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

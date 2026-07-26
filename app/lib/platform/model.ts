@@ -918,6 +918,129 @@ export type EnsembleOverview = {
   decisions: ExecutiveDecisionRecord[];
 };
 
+export type MemoryEntityRecord = {
+  $id: string;
+  workspaceId: string;
+  entityType: string;
+  name: string;
+  status: string;
+  aliases: string;
+  attributes: string;
+  sourceCount: number;
+  verifiedSourceCount: number;
+  confidenceBps: number;
+  sensitive: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MemoryEventRecord = {
+  $id: string;
+  workspaceId: string;
+  entityId: string;
+  eventType: string;
+  status: string;
+  summary: string;
+  facts: string;
+  sourceType: string;
+  sourceId: string;
+  verified: number;
+  synthetic: number;
+  occurredAt: string;
+  recordedAt: string;
+  recordedBy: string;
+};
+
+export type KnowledgeClaimRecord = {
+  $id: string;
+  workspaceId: string;
+  entityId: string;
+  predicate: string;
+  value: string;
+  status: string;
+  confidenceBps: number;
+  evidenceRefs: string;
+  promoted: number;
+  createdBy: string;
+  validFrom: string;
+  validTo?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TwinSnapshotRecord = {
+  $id: string;
+  workspaceId: string;
+  status: string;
+  observedEntityCount: number;
+  verifiedClaimCount: number;
+  staleClaimCount: number;
+  completenessBps: number;
+  model: string;
+  evidence: string;
+  synthetic: number;
+  createdAt: string;
+};
+
+export type ScenarioSimulationRecord = {
+  $id: string;
+  workspaceId: string;
+  snapshotId: string;
+  title: string;
+  status: string;
+  horizonDays: number;
+  changeSet: string;
+  assumptions: string;
+  projectedImpact: string;
+  confidenceBps: number;
+  liveModelCalled: number;
+  customerDataUsed: number;
+  externalActionsExecuted: number;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type ImpactForecastRecord = {
+  $id: string;
+  workspaceId: string;
+  simulationId: string;
+  dimension: string;
+  direction: string;
+  baselineValue: number;
+  projectedValueLow: number;
+  projectedValueHigh: number;
+  unit: string;
+  confidenceBps: number;
+  status: string;
+  evidence: string;
+  createdAt: string;
+};
+
+export type MemoryPromotionRecord = {
+  $id: string;
+  workspaceId: string;
+  claimId: string;
+  decision: string;
+  status: string;
+  rationale: string;
+  authorized: number;
+  knowledgeBaseChanged: number;
+  externalActionsExecuted: number;
+  decidedBy: string;
+  createdAt: string;
+};
+
+export type ContinuumOverview = {
+  workspaceId: string;
+  entities: MemoryEntityRecord[];
+  events: MemoryEventRecord[];
+  claims: KnowledgeClaimRecord[];
+  snapshots: TwinSnapshotRecord[];
+  simulations: ScenarioSimulationRecord[];
+  forecasts: ImpactForecastRecord[];
+  promotions: MemoryPromotionRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

@@ -71,6 +71,13 @@ test("declares unique Appwrite foundation resources", () => {
       "evidence_syntheses",
       "executive_briefs",
       "executive_decisions",
+      "memory_entities",
+      "memory_events",
+      "knowledge_claims",
+      "twin_snapshots",
+      "scenario_simulations",
+      "impact_forecasts",
+      "memory_promotions",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -128,6 +135,13 @@ test("keeps every queried field indexed", () => {
   const evidenceSyntheses = tables.find((table) => table.id === "evidence_syntheses");
   const executiveBriefs = tables.find((table) => table.id === "executive_briefs");
   const executiveDecisions = tables.find((table) => table.id === "executive_decisions");
+  const memoryEntities = tables.find((table) => table.id === "memory_entities");
+  const memoryEvents = tables.find((table) => table.id === "memory_events");
+  const knowledgeClaims = tables.find((table) => table.id === "knowledge_claims");
+  const twinSnapshots = tables.find((table) => table.id === "twin_snapshots");
+  const scenarioSimulations = tables.find((table) => table.id === "scenario_simulations");
+  const impactForecasts = tables.find((table) => table.id === "impact_forecasts");
+  const memoryPromotions = tables.find((table) => table.id === "memory_promotions");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -179,6 +193,13 @@ test("keeps every queried field indexed", () => {
   assert.ok(evidenceSyntheses.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(executiveBriefs.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(executiveDecisions.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(memoryEntities.indexes.some((index) => index.key === "workspace_name_unique"));
+  assert.ok(memoryEvents.indexes.some((index) => index.attributes.includes("occurredAt")));
+  assert.ok(knowledgeClaims.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(twinSnapshots.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(scenarioSimulations.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(impactForecasts.indexes.some((index) => index.key === "simulation_dimension_unique"));
+  assert.ok(memoryPromotions.indexes.some((index) => index.attributes.includes("createdAt")));
 });
 
 test("enforces approval and execution roles", () => {

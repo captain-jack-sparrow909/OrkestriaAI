@@ -55,6 +55,13 @@ export const appwriteTables = {
   evidenceSyntheses: "evidence_syntheses",
   executiveBriefs: "executive_briefs",
   executiveDecisions: "executive_decisions",
+  memoryEntities: "memory_entities",
+  memoryEvents: "memory_events",
+  knowledgeClaims: "knowledge_claims",
+  twinSnapshots: "twin_snapshots",
+  scenarioSimulations: "scenario_simulations",
+  impactForecasts: "impact_forecasts",
+  memoryPromotions: "memory_promotions",
 } as const;
 
 export type AppwriteServerConfig = {

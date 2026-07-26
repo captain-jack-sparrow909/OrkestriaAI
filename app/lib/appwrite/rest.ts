@@ -69,6 +69,10 @@ export const query = {
     method: "orderDesc",
     attribute,
   }),
+  orderAsc: (attribute: string) => ({
+    method: "orderAsc",
+    attribute,
+  }),
   limit: (value: number) => ({
     method: "limit",
     values: [value],

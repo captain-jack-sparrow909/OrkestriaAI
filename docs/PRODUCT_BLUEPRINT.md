@@ -384,6 +384,29 @@ only and never triggers an external action.
 entity-aware institutional memory, temporal evidence, scenario simulation,
 impact forecasting, and governed promotion of learned operating knowledge.
 
+### Phase 13 — Organizational Memory & Operational Digital Twin
+
+Give the organization a durable, time-aware operating memory and a safe place
+to rehearse future changes without confusing simulation with reality.
+
+**Implementation status:** Continuum ships as an authenticated organizational
+memory and digital-twin surface backed by seven new Appwrite tables. Canonical
+entities begin as workspace configuration, not observed infrastructure.
+User-captured events remain self-reported and unverified, while proposed claims
+start at low confidence with no invented evidence. Twin snapshots reconstruct
+only durable OrkestriaAI records and preserve missing or stale knowledge. A
+Function-backed scenario rehearsal emits four deterministic impact ranges with
+no live model, customer data, cloud inventory, external telemetry, memory
+mutation, or operational execution. Knowledge promotion remains blocked until
+a claim is independently verified, has at least two evidence references and
+80% confidence, and the latest twin is decision-grade with no stale claims.
+Holding or rejecting a claim changes neither organizational memory nor
+production; even a valid promotion updates internal knowledge only.
+
+**Next phase:** Strategic Planning & Portfolio Intelligence — add goals,
+initiatives, capacity constraints, scenario-backed tradeoffs, portfolio risk,
+and governed investment decisions.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

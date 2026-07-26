@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes fifty-six TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes sixty-three TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,15 +62,15 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 12 adds **Ensemble**, the Collaborative Agent Teams & Executive
-Decisioning control room. It brings Vela, Loom, Tempo, Helio, and Aegis into
-bounded five-specialist missions with explicit handoffs, visible conflicts,
-cross-product evidence synthesis, internal executive briefs, and governed
-decision records. The rehearsal is deterministic and uses no live model or
-customer data; every specialist remains advisory-only, synthetic citations are
-never treated as proof, and recording a decision never executes an external
-action.
+Phase 13 adds **Continuum**, the Organizational Memory & Operational Digital
+Twin control room. It separates canonical entities, temporal events, proposed
+claims, verified knowledge, point-in-time twin snapshots, scenario simulations,
+impact ranges, and governed memory promotion. Workspace observations remain
+self-reported until verified, configuration entities never masquerade as live
+inventory, and deterministic simulations use no live model, customer data, or
+external systems. Simulation output cannot promote itself into memory or
+execute an operational change.
 
-**Next phase:** Phase 13 — Organizational Memory & Operational Digital Twin:
-entity-aware institutional memory, temporal evidence, scenario simulation,
-impact forecasting, and governed promotion of learned operating knowledge.
+**Next phase:** Phase 14 — Strategic Planning & Portfolio Intelligence:
+goals, initiatives, capacity constraints, scenario-backed tradeoffs, portfolio
+risk, and governed investment decisions.
