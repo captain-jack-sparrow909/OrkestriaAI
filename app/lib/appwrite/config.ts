@@ -69,6 +69,13 @@ export const appwriteTables = {
   portfolioScenarios: "portfolio_scenarios",
   portfolioForecasts: "portfolio_forecasts",
   investmentDecisions: "investment_decisions",
+  executionPrograms: "execution_programs",
+  programMilestones: "program_milestones",
+  deliveryEvidence: "delivery_evidence",
+  benefitMetrics: "benefit_metrics",
+  benefitMeasurements: "benefit_measurements",
+  executionVariances: "execution_variances",
+  correctiveActions: "corrective_actions",
 } as const;
 
 export type AppwriteServerConfig = {

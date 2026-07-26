@@ -77,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "strategic_portfolio",
+      phase: "governed_execution",
       requestId,
     });
   }
@@ -1636,6 +1636,207 @@ async function orchestrator({ req, res, log, error }) {
         externalActionsExecuted: false,
       });
       return res.json({ scenario, forecasts, requestId });
+    }
+
+    if (path === "/execution/assess" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const programId = String(body.programId || "").slice(0, 36);
+      if (!workspaceId || !programId) {
+        return res.json(
+          { error: "workspaceId and programId are required", requestId },
+          400,
+        );
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json(
+          { error: "Execution assessments are not allowed for this role", requestId },
+          403,
+        );
+      }
+      const [program, milestones, deliveryEvidence, benefitMetrics, benefitMeasurements] =
+        await Promise.all([
+          tables.getRow({
+            databaseId: DATABASE_ID,
+            tableId: "execution_programs",
+            rowId: programId,
+          }),
+          tables.listRows({
+            databaseId: DATABASE_ID,
+            tableId: "program_milestones",
+            queries: [Query.equal("programId", [programId]), Query.limit(100)],
+            total: false,
+          }),
+          tables.listRows({
+            databaseId: DATABASE_ID,
+            tableId: "delivery_evidence",
+            queries: [Query.equal("programId", [programId]), Query.limit(100)],
+            total: false,
+          }),
+          tables.listRows({
+            databaseId: DATABASE_ID,
+            tableId: "benefit_metrics",
+            queries: [Query.equal("programId", [programId]), Query.limit(100)],
+            total: false,
+          }),
+          tables.listRows({
+            databaseId: DATABASE_ID,
+            tableId: "benefit_measurements",
+            queries: [Query.equal("programId", [programId]), Query.limit(100)],
+            total: false,
+          }),
+        ]);
+      if (program.workspaceId !== workspaceId) {
+        return res.json(
+          { error: "The execution program is outside this workspace", requestId },
+          409,
+        );
+      }
+      const milestoneCount = milestones.rows.length;
+      const evidencedMilestones = new Set(
+        deliveryEvidence.rows.map((item) => item.milestoneId),
+      ).size;
+      const measuredMetrics = new Set(
+        benefitMeasurements.rows.map((item) => item.metricId),
+      ).size;
+      const deliveryCoverage = milestoneCount
+        ? Math.round((evidencedMilestones / milestoneCount) * 100)
+        : 0;
+      const benefitCoverage = benefitMetrics.rows.length
+        ? Math.round((measuredMetrics / benefitMetrics.rows.length) * 100)
+        : 0;
+      const evidenceItems =
+        deliveryEvidence.rows.length + benefitMeasurements.rows.length;
+      const verifiedItems =
+        deliveryEvidence.rows.filter((item) => Number(item.verified) === 1).length +
+        benefitMeasurements.rows.filter(
+          (item) => Number(item.independentlyVerified) === 1,
+        ).length;
+      const evidenceConfidence = evidenceItems
+        ? Math.round((verifiedItems / evidenceItems) * 100)
+        : 0;
+      const severityFor = (gap) =>
+        gap >= 50 ? "high" : gap >= 25 ? "medium" : "low";
+      const dimensions = [
+        {
+          dimension: "delivery_progress",
+          baseline: 50,
+          actual: deliveryCoverage,
+          unit: "percent",
+        },
+        {
+          dimension: "benefit_observability",
+          baseline: 40,
+          actual: benefitCoverage,
+          unit: "percent",
+        },
+        {
+          dimension: "evidence_confidence",
+          baseline: 80,
+          actual: evidenceConfidence,
+          unit: "percent",
+        },
+      ];
+      const assessedAt = new Date();
+      const variances = await Promise.all(
+        dimensions.map((dimension) => {
+          const varianceValue = dimension.actual - dimension.baseline;
+          return tables.createRow({
+            databaseId: DATABASE_ID,
+            tableId: "execution_variances",
+            rowId: ID.unique(),
+            data: {
+              workspaceId,
+              programId,
+              dimension: dimension.dimension,
+              status: "synthetic_advisory",
+              severity: severityFor(Math.abs(varianceValue)),
+              baselineValue: dimension.baseline,
+              actualValue: dimension.actual,
+              varianceValue,
+              unit: dimension.unit,
+              confidenceBps: 2600,
+              decisionGrade: 0,
+              evidence: JSON.stringify({
+                basis: "deterministic_execution_fixture",
+                milestoneCount,
+                evidencedMilestones,
+                benefitMetricCount: benefitMetrics.rows.length,
+                measuredMetrics,
+                verifiedItems,
+                evidenceItems,
+                liveModelCalled: false,
+                deliverySystemConnected: false,
+                financeSystemConnected: false,
+                customerSystemConnected: false,
+                realizedBenefitClaimed: false,
+                correctiveActionExecuted: false,
+              }),
+              externalSystemsQueried: 0,
+              assessedAt: assessedAt.toISOString(),
+            },
+            permissions: [],
+          });
+        }),
+      );
+      await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "execution_variance_assessment",
+            quantity: variances.length,
+            unit: "variance_dimension",
+            sourceType: "execution_program",
+            sourceId: programId,
+            period: assessedAt.toISOString().slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `execution-assessment:${variances[0].$id}`,
+            recordedAt: assessedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "audit_events",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            actorEmail: membership.userEmail,
+            action: "execution.variance_assessment.completed",
+            targetType: "execution_program",
+            targetId: programId,
+            outcome: "success",
+            metadata: JSON.stringify({
+              varianceDimensions: variances.length,
+              deterministic: true,
+              liveModelCalled: false,
+              externalSystemsQueried: false,
+              realizedBenefitClaimed: false,
+              programChanged: false,
+              correctiveActionExecuted: false,
+              requestId,
+            }),
+            occurredAt: assessedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      audit(log, {
+        requestId,
+        event: "execution.variance_assessment.completed",
+        workspaceId,
+        programId,
+        varianceDimensions: variances.length,
+        liveModelCalled: false,
+        externalSystemsQueried: false,
+        realizedBenefitClaimed: false,
+        programChanged: false,
+        correctiveActionExecuted: false,
+      });
+      return res.json({ variances, requestId });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

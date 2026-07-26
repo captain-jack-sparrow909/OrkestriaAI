@@ -430,6 +430,32 @@ external execution.
 milestones, delivery evidence, realized benefits, variance management, and
 approval-bound corrective action.
 
+### Phase 15 — Governed Execution & Benefits Realization
+
+Carry approved intent into accountable delivery without allowing a planning
+record, self-reported update, or synthetic variance signal to impersonate
+operational truth.
+
+**Implementation status:** Keystone ships as an authenticated execution and
+benefits-realization surface backed by seven new Appwrite tables. Programs begin
+as unfunded internal drafts unless linked to an authorized investment record,
+and even linked programs create no committed spend. Milestones preserve explicit
+acceptance criteria; user-submitted delivery evidence never completes or verifies
+a milestone automatically. Benefit definitions and observations keep baseline,
+source, verification, financial impact, and realized-benefit claims separate. A
+Function-backed assessment emits three deterministic variance signals from only
+the durable Keystone records, with no live model, delivery system, finance
+system, customer system, or other external query. Corrective actions start
+unapproved and approval remains blocked until investment authority, delivery
+evidence, benefit definitions and measurements, and variance quality are
+decision-grade. Holding changes nothing; even a valid approval records intent
+only and creates no schedule change, budget change, financial commitment, or
+external execution.
+
+**Next phase:** Federated Enterprise Command — add multi-workspace operating
+rollups, delegated governance, cross-workspace policy, privacy-safe benchmarks,
+and evidence-backed executive decision packages.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

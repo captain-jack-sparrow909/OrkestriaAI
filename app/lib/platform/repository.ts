@@ -77,6 +77,14 @@ import {
   type PortfolioForecastRecord,
   type InvestmentDecisionRecord,
   type MeridianOverview,
+  type ExecutionProgramRecord,
+  type ProgramMilestoneRecord,
+  type DeliveryEvidenceRecord,
+  type BenefitMetricRecord,
+  type BenefitMeasurementRecord,
+  type ExecutionVarianceRecord,
+  type CorrectiveActionRecord,
+  type KeystoneOverview,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -5959,4 +5967,823 @@ export async function recordInvestmentDecision(input: {
     },
   });
   return decision;
+}
+
+function executionProgramRowId(workspaceId: string) {
+  return enterpriseRowId("execution_evidence", workspaceId);
+}
+
+function milestoneRowId(sequence: number, workspaceId: string) {
+  return enterpriseRowId(`milestone_${sequence}`, workspaceId);
+}
+
+function benefitMetricRowId(metric: string, workspaceId: string) {
+  return enterpriseRowId(`benefit_${metric}`, workspaceId);
+}
+
+function addDays(value: Date, days: number) {
+  const next = new Date(value);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next.toISOString();
+}
+
+async function ensureKeystoneFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureMeridianFoundation(email, displayName);
+  if (!workspace) return null;
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const programId = executionProgramRowId(workspace.workspaceId);
+  await createIfMissing(appwrite, `${base}/${appwriteTables.executionPrograms}/rows`, {
+    rowId: programId,
+    data: {
+      workspaceId: workspace.workspaceId,
+      initiativeId: initiativeRowId("evidence", workspace.workspaceId),
+      name: "Evidence graph delivery program",
+      status: "draft_unfunded",
+      phase: "definition",
+      ownerEmail: email.toLowerCase(),
+      startDate: now,
+      targetDate: addDays(nowDate, 180),
+      budgetCents: 1_500_000,
+      committedBudgetCents: 0,
+      financialCommitmentCreated: 0,
+      externalActionsExecuted: 0,
+      assumptions: JSON.stringify([
+        "This program is an internal execution draft, not an approved investment.",
+        "Dates and budget are planning assumptions.",
+        "No delivery, finance, HR, procurement, or project system is connected.",
+      ]),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  const milestones = [
+    {
+      sequence: 1,
+      name: "Agree evidence contract",
+      days: 30,
+      acceptance:
+        "Control owners review the proposed provenance fields and acceptance criteria.",
+    },
+    {
+      sequence: 2,
+      name: "Validate traceability slice",
+      days: 90,
+      acceptance:
+        "A representative claim can be traced to source evidence and its human decision.",
+    },
+    {
+      sequence: 3,
+      name: "Complete decision-grade pilot",
+      days: 180,
+      acceptance:
+        "Independent reviewers verify completeness, access boundaries, and audit reconstruction.",
+    },
+  ];
+  for (const milestone of milestones) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.programMilestones}/rows`, {
+      rowId: milestoneRowId(milestone.sequence, workspace.workspaceId),
+      data: {
+        workspaceId: workspace.workspaceId,
+        programId,
+        name: milestone.name,
+        status: "planned_unverified",
+        sequence: milestone.sequence,
+        targetDate: addDays(nowDate, milestone.days),
+        completionBps: 0,
+        acceptanceCriteria: milestone.acceptance,
+        externallyVerified: 0,
+        evidenceCount: 0,
+        ownerEmail: email.toLowerCase(),
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+  const metrics = [
+    {
+      key: "traceability",
+      name: "Decision traceability coverage",
+      metric: "decision_traceability_coverage",
+      baseline: 0,
+      target: 90,
+      unit: "percent",
+      window: "within_90_days",
+    },
+    {
+      key: "reconstruction",
+      name: "Audit reconstruction time",
+      metric: "audit_reconstruction_time",
+      baseline: 240,
+      target: 30,
+      unit: "minutes",
+      window: "within_180_days",
+    },
+  ];
+  for (const metric of metrics) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.benefitMetrics}/rows`, {
+      rowId: benefitMetricRowId(metric.key, workspace.workspaceId),
+      data: {
+        workspaceId: workspace.workspaceId,
+        programId,
+        name: metric.name,
+        metric: metric.metric,
+        baselineValue: metric.baseline,
+        targetValue: metric.target,
+        unit: metric.unit,
+        realizationWindow: metric.window,
+        status: "planning_assumption",
+        verified: 0,
+        evidence: JSON.stringify({
+          baselineExternallyVerified: false,
+          targetLeadershipApproved: false,
+          realizedBenefitClaimed: false,
+        }),
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 15,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+            continuousTrust: true,
+            adaptiveAutonomy: true,
+            collaborativeDecisioning: true,
+            organizationalMemory: true,
+            operationalTwin: true,
+            strategicPlanning: true,
+            portfolioIntelligence: true,
+            governedExecution: true,
+            benefitsRealization: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+export async function getKeystoneOverview(
+  email: string,
+  displayName: string,
+): Promise<KeystoneOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureKeystoneFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view governed execution.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const workspaceRows = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.limit(100),
+  ];
+  const recentRows = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.orderDesc("createdAt"),
+    query.limit(100),
+  ];
+  const [
+    initiatives,
+    investmentDecisions,
+    programs,
+    milestones,
+    deliveryEvidence,
+    benefitMetrics,
+    benefitMeasurements,
+    variances,
+    correctiveActions,
+  ] = await Promise.all([
+    appwrite.client.request<RowList<PortfolioInitiativeRecord>>(
+      `${base}/${appwriteTables.portfolioInitiatives}/rows`,
+      { queries: workspaceRows },
+    ),
+    appwrite.client.request<RowList<InvestmentDecisionRecord>>(
+      `${base}/${appwriteTables.investmentDecisions}/rows`,
+      { queries: recentRows },
+    ),
+    appwrite.client.request<RowList<ExecutionProgramRecord>>(
+      `${base}/${appwriteTables.executionPrograms}/rows`,
+      { queries: workspaceRows },
+    ),
+    appwrite.client.request<RowList<ProgramMilestoneRecord>>(
+      `${base}/${appwriteTables.programMilestones}/rows`,
+      { queries: workspaceRows },
+    ),
+    appwrite.client.request<RowList<DeliveryEvidenceRecord>>(
+      `${base}/${appwriteTables.deliveryEvidence}/rows`,
+      { queries: workspaceRows },
+    ),
+    appwrite.client.request<RowList<BenefitMetricRecord>>(
+      `${base}/${appwriteTables.benefitMetrics}/rows`,
+      { queries: workspaceRows },
+    ),
+    appwrite.client.request<RowList<BenefitMeasurementRecord>>(
+      `${base}/${appwriteTables.benefitMeasurements}/rows`,
+      { queries: recentRows },
+    ),
+    appwrite.client.request<RowList<ExecutionVarianceRecord>>(
+      `${base}/${appwriteTables.executionVariances}/rows`,
+      {
+        queries: [
+          query.equal("workspaceId", workspace.workspaceId),
+          query.orderDesc("assessedAt"),
+          query.limit(100),
+        ],
+      },
+    ),
+    appwrite.client.request<RowList<CorrectiveActionRecord>>(
+      `${base}/${appwriteTables.correctiveActions}/rows`,
+      { queries: recentRows },
+    ),
+  ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    initiatives: initiatives.rows,
+    investmentDecisions: investmentDecisions.rows,
+    programs: programs.rows,
+    milestones: milestones.rows,
+    deliveryEvidence: deliveryEvidence.rows,
+    benefitMetrics: benefitMetrics.rows,
+    benefitMeasurements: benefitMeasurements.rows,
+    variances: variances.rows,
+    correctiveActions: correctiveActions.rows,
+  };
+}
+
+export async function createExecutionProgram(input: {
+  workspaceId: string;
+  initiativeId: string;
+  investmentDecisionId?: string;
+  name: string;
+  targetDate: string;
+  budgetDollars: number;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const initiative = await appwrite.client.request<PortfolioInitiativeRecord>(
+    `${base}/${appwriteTables.portfolioInitiatives}/rows/${input.initiativeId}`,
+  );
+  if (initiative.workspaceId !== input.workspaceId) {
+    throw new Error("The selected initiative is outside this workspace.");
+  }
+  let investmentDecision: InvestmentDecisionRecord | null = null;
+  if (input.investmentDecisionId) {
+    investmentDecision = await appwrite.client.request<InvestmentDecisionRecord>(
+      `${base}/${appwriteTables.investmentDecisions}/rows/${input.investmentDecisionId}`,
+    );
+    if (
+      investmentDecision.workspaceId !== input.workspaceId ||
+      investmentDecision.authorized !== 1
+    ) {
+      throw new Error("The selected investment decision is not authorized in this workspace.");
+    }
+    const scenario = await appwrite.client.request<PortfolioScenarioRecord>(
+      `${base}/${appwriteTables.portfolioScenarios}/rows/${investmentDecision.scenarioId}`,
+    );
+    const selectedIds = JSON.parse(scenario.selectedInitiativeIds || "[]") as string[];
+    if (!selectedIds.includes(initiative.$id)) {
+      throw new Error("The investment decision does not cover this initiative.");
+    }
+  }
+  const now = new Date().toISOString();
+  const targetDate = new Date(input.targetDate);
+  if (!Number.isFinite(targetDate.valueOf()) || targetDate <= new Date(now)) {
+    throw new Error("Program target date must be in the future.");
+  }
+  const program = await appwrite.client.request<ExecutionProgramRecord>(
+    `${base}/${appwriteTables.executionPrograms}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          initiativeId: initiative.$id,
+          ...(investmentDecision
+            ? { investmentDecisionId: investmentDecision.$id }
+            : {}),
+          name: input.name.trim().slice(0, 180),
+          status: investmentDecision ? "authorized_internal_plan" : "draft_unfunded",
+          phase: "definition",
+          ownerEmail: input.email.toLowerCase(),
+          startDate: now,
+          targetDate: targetDate.toISOString(),
+          budgetCents: Math.round(
+            Math.min(100_000_000, Math.max(0, input.budgetDollars)) * 100,
+          ),
+          committedBudgetCents: 0,
+          financialCommitmentCreated: 0,
+          externalActionsExecuted: 0,
+          assumptions: JSON.stringify([
+            "Program dates and budget remain internal planning records.",
+            investmentDecision
+              ? "An authorized portfolio record is linked, but no financial commitment was created."
+              : "No authorized investment decision is linked.",
+            "Creating the program does not change delivery, finance, HR, or procurement systems.",
+          ]),
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  const startTime = new Date(now).valueOf();
+  const targetTime = targetDate.valueOf();
+  const milestoneTemplates = [
+    {
+      sequence: 1,
+      name: "Confirm accountable delivery plan",
+      fraction: 0.25,
+      acceptanceCriteria:
+        "Accountable owners review scope, dependencies, controls, and evidence expectations.",
+    },
+    {
+      sequence: 2,
+      name: "Validate representative outcome",
+      fraction: 0.6,
+      acceptanceCriteria:
+        "A representative outcome is supported by traceable delivery and measurement evidence.",
+    },
+    {
+      sequence: 3,
+      name: "Complete independent realization review",
+      fraction: 1,
+      acceptanceCriteria:
+        "Independent reviewers verify delivery acceptance and benefit realization evidence.",
+    },
+  ];
+  const benefitTemplates = [
+    {
+      name: "Outcome evidence coverage",
+      metric: "outcome_evidence_coverage",
+      baselineValue: 0,
+      targetValue: 80,
+      unit: "percent",
+      realizationWindow: "by_program_target",
+    },
+    {
+      name: "Governance review cycle time",
+      metric: "governance_review_cycle_time",
+      baselineValue: 120,
+      targetValue: 30,
+      unit: "minutes",
+      realizationWindow: "by_program_target",
+    },
+  ];
+  await Promise.all([
+    ...milestoneTemplates.map((milestone) =>
+      appwrite.client.request<ProgramMilestoneRecord>(
+        `${base}/${appwriteTables.programMilestones}/rows`,
+        {
+          method: "POST",
+          body: {
+            rowId: "unique()",
+            data: {
+              workspaceId: input.workspaceId,
+              programId: program.$id,
+              name: milestone.name,
+              status: "planned_unverified",
+              sequence: milestone.sequence,
+              targetDate: new Date(
+                startTime + (targetTime - startTime) * milestone.fraction,
+              ).toISOString(),
+              completionBps: 0,
+              acceptanceCriteria: milestone.acceptanceCriteria,
+              externallyVerified: 0,
+              evidenceCount: 0,
+              ownerEmail: input.email.toLowerCase(),
+              createdAt: now,
+              updatedAt: now,
+            },
+            permissions: [],
+          },
+        },
+      ),
+    ),
+    ...benefitTemplates.map((metric) =>
+      appwrite.client.request<BenefitMetricRecord>(
+        `${base}/${appwriteTables.benefitMetrics}/rows`,
+        {
+          method: "POST",
+          body: {
+            rowId: "unique()",
+            data: {
+              workspaceId: input.workspaceId,
+              programId: program.$id,
+              ...metric,
+              status: "planning_assumption",
+              verified: 0,
+              evidence: JSON.stringify({
+                baselineExternallyVerified: false,
+                targetLeadershipApproved: false,
+                realizedBenefitClaimed: false,
+              }),
+              createdAt: now,
+              updatedAt: now,
+            },
+            permissions: [],
+          },
+        },
+      ),
+    ),
+  ]);
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "execution.program.created",
+    targetType: "execution_program",
+    targetId: program.$id,
+    metadata: {
+      investmentDecisionLinked: Boolean(investmentDecision),
+      financialCommitmentCreated: false,
+      externalActionsExecuted: false,
+    },
+  });
+  return program;
+}
+
+export async function recordDeliveryEvidence(input: {
+  workspaceId: string;
+  milestoneId: string;
+  type: string;
+  summary: string;
+  reference: string;
+  occurredAt: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const milestone = await appwrite.client.request<ProgramMilestoneRecord>(
+    `${base}/${appwriteTables.programMilestones}/rows/${input.milestoneId}`,
+  );
+  if (milestone.workspaceId !== input.workspaceId) {
+    throw new Error("The selected milestone is outside this workspace.");
+  }
+  const occurredAt = new Date(input.occurredAt);
+  if (!Number.isFinite(occurredAt.valueOf())) {
+    throw new Error("A valid evidence date is required.");
+  }
+  const now = new Date().toISOString();
+  const evidence = await appwrite.client.request<DeliveryEvidenceRecord>(
+    `${base}/${appwriteTables.deliveryEvidence}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          programId: milestone.programId,
+          milestoneId: milestone.$id,
+          type: input.type.trim().slice(0, 64) || "delivery_note",
+          source: "workspace_owner_submission",
+          status: "user_supplied_unverified",
+          summary: input.summary.trim().slice(0, 2000),
+          reference: input.reference.trim().slice(0, 1000),
+          userSupplied: 1,
+          verified: 0,
+          occurredAt: occurredAt.toISOString(),
+          createdAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await appwrite.client.request(
+    `${base}/${appwriteTables.programMilestones}/rows/${milestone.$id}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          evidenceCount: milestone.evidenceCount + 1,
+          status: "evidence_submitted_unverified",
+          updatedAt: now,
+        },
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "execution.delivery_evidence.recorded",
+    targetType: "delivery_evidence",
+    targetId: evidence.$id,
+    metadata: {
+      userSupplied: true,
+      verified: false,
+      milestoneCompleted: false,
+    },
+  });
+  return evidence;
+}
+
+export async function recordBenefitMeasurement(input: {
+  workspaceId: string;
+  metricId: string;
+  observedValue: number;
+  period: string;
+  source: string;
+  evidence: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const metric = await appwrite.client.request<BenefitMetricRecord>(
+    `${base}/${appwriteTables.benefitMetrics}/rows/${input.metricId}`,
+  );
+  if (metric.workspaceId !== input.workspaceId) {
+    throw new Error("The selected benefit metric is outside this workspace.");
+  }
+  const measurement = await appwrite.client.request<BenefitMeasurementRecord>(
+    `${base}/${appwriteTables.benefitMeasurements}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          programId: metric.programId,
+          metricId: metric.$id,
+          observedValue: Math.round(
+            Math.min(1_000_000_000, Math.max(-1_000_000_000, input.observedValue)),
+          ),
+          period: input.period.trim().slice(0, 32),
+          source: input.source.trim().slice(0, 128),
+          status: "self_reported_unverified",
+          independentlyVerified: 0,
+          evidence: JSON.stringify({
+            note: input.evidence.trim().slice(0, 2000),
+            sourceConnected: false,
+            baselineVerified: false,
+          }),
+          financialImpactCents: 0,
+          realizedBenefitClaimed: 0,
+          recordedBy: input.email.toLowerCase(),
+          createdAt: new Date().toISOString(),
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "execution.benefit_measurement.recorded",
+    targetType: "benefit_measurement",
+    targetId: measurement.$id,
+    metadata: {
+      independentlyVerified: false,
+      realizedBenefitClaimed: false,
+      financialImpactCents: 0,
+    },
+  });
+  return measurement;
+}
+
+export async function runExecutionAssessment(input: {
+  workspaceId: string;
+  programId: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureKeystoneFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          programId: input.programId.slice(0, 36),
+        }),
+        async: false,
+        path: "/execution/assess",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: { variances?: ExecutionVarianceRecord[]; error?: string } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Execution assessment returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    response?.variances?.length !== 3
+  ) {
+    throw new Error(response?.error || execution.errors || "Execution assessment failed.");
+  }
+  return response;
+}
+
+export async function proposeCorrectiveAction(input: {
+  workspaceId: string;
+  varianceId: string;
+  title: string;
+  actionType: string;
+  rationale: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const variance = await appwrite.client.request<ExecutionVarianceRecord>(
+    `${base}/${appwriteTables.executionVariances}/rows/${input.varianceId}`,
+  );
+  if (variance.workspaceId !== input.workspaceId) {
+    throw new Error("The selected variance is outside this workspace.");
+  }
+  const action = await appwrite.client.request<CorrectiveActionRecord>(
+    `${base}/${appwriteTables.correctiveActions}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          programId: variance.programId,
+          varianceId: variance.$id,
+          title: input.title.trim().slice(0, 180),
+          actionType: input.actionType.trim().slice(0, 64),
+          status: "proposed_unapproved",
+          rationale: input.rationale.trim().slice(0, 2000),
+          approvalStatus: "pending",
+          authorized: 0,
+          scheduleChanged: 0,
+          budgetChanged: 0,
+          financialCommitmentCreated: 0,
+          externalActionsExecuted: 0,
+          proposedBy: input.email.toLowerCase(),
+          createdAt: new Date().toISOString(),
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "execution.corrective_action.proposed",
+    targetType: "corrective_action",
+    targetId: action.$id,
+    metadata: {
+      approvalRequired: true,
+      scheduleChanged: false,
+      budgetChanged: false,
+      externalActionsExecuted: false,
+    },
+  });
+  return action;
+}
+
+export async function recordCorrectiveActionDecision(input: {
+  workspaceId: string;
+  actionId: string;
+  decision: "hold" | "approve";
+  rationale: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const action = await appwrite.client.request<CorrectiveActionRecord>(
+    `${base}/${appwriteTables.correctiveActions}/rows/${input.actionId}`,
+  );
+  if (action.workspaceId !== input.workspaceId || action.approvalStatus !== "pending") {
+    throw new Error("The corrective action is not pending in this workspace.");
+  }
+  const [program, variance, evidence, metrics, measurements] = await Promise.all([
+    appwrite.client.request<ExecutionProgramRecord>(
+      `${base}/${appwriteTables.executionPrograms}/rows/${action.programId}`,
+    ),
+    appwrite.client.request<ExecutionVarianceRecord>(
+      `${base}/${appwriteTables.executionVariances}/rows/${action.varianceId}`,
+    ),
+    appwrite.client.request<RowList<DeliveryEvidenceRecord>>(
+      `${base}/${appwriteTables.deliveryEvidence}/rows`,
+      { queries: [query.equal("programId", action.programId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<BenefitMetricRecord>>(
+      `${base}/${appwriteTables.benefitMetrics}/rows`,
+      { queries: [query.equal("programId", action.programId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<BenefitMeasurementRecord>>(
+      `${base}/${appwriteTables.benefitMeasurements}/rows`,
+      { queries: [query.equal("programId", action.programId), query.limit(100)] },
+    ),
+  ]);
+  let investmentDecision: InvestmentDecisionRecord | null = null;
+  if (program.investmentDecisionId) {
+    investmentDecision = await appwrite.client
+      .request<InvestmentDecisionRecord>(
+        `${base}/${appwriteTables.investmentDecisions}/rows/${program.investmentDecisionId}`,
+      )
+      .catch(() => null);
+  }
+  const blockers = [
+    investmentDecision?.authorized === 1
+      ? null
+      : "The program has no authorized investment decision.",
+    variance.status === "verified" &&
+    variance.decisionGrade === 1 &&
+    variance.confidenceBps >= 8000
+      ? null
+      : "The variance assessment is synthetic or not decision-grade.",
+    evidence.rows.some((item) => item.verified === 1)
+      ? null
+      : "No delivery evidence has been independently verified.",
+    metrics.rows.length > 0 && metrics.rows.every((item) => item.verified === 1)
+      ? null
+      : "Benefit definitions and baselines are unverified.",
+    measurements.rows.some((item) => item.independentlyVerified === 1)
+      ? null
+      : "No benefit measurement has been independently verified.",
+  ].filter(Boolean);
+  if (input.decision === "approve" && blockers.length) {
+    throw new Error(
+      `Corrective action cannot be approved while evidence blockers remain: ${blockers.join(" ")}`,
+    );
+  }
+  const now = new Date().toISOString();
+  const updated = await appwrite.client.request<CorrectiveActionRecord>(
+    `${base}/${appwriteTables.correctiveActions}/rows/${action.$id}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          status:
+            input.decision === "approve"
+              ? "approved_no_execution"
+              : "held_no_change",
+          rationale: input.rationale.trim().slice(0, 2000),
+          approvalStatus: input.decision === "approve" ? "approved" : "held",
+          authorized: input.decision === "approve" ? 1 : 0,
+          scheduleChanged: 0,
+          budgetChanged: 0,
+          financialCommitmentCreated: 0,
+          externalActionsExecuted: 0,
+          decidedBy: input.email.toLowerCase(),
+          decidedAt: now,
+        },
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `execution.corrective_action.${input.decision}`,
+    targetType: "corrective_action",
+    targetId: action.$id,
+    metadata: {
+      blockers: blockers.length,
+      scheduleChanged: false,
+      budgetChanged: false,
+      financialCommitmentCreated: false,
+      externalActionsExecuted: false,
+    },
+  });
+  return updated;
 }

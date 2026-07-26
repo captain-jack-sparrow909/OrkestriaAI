@@ -62,14 +62,17 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 14 adds **Meridian**, the Strategic Planning & Portfolio Intelligence
-control room. It links strategic goals, initiative proposals, explicit
-dependencies, budget and people envelopes, deterministic portfolio scenarios,
-tradeoff ranges, and governed investment decisions. Goals, capacity, costs, and
-benefits begin as visible planning assumptions; simulations use no live model,
-customer data, finance, HR, or delivery systems. Scenario output cannot create
-a budget, hire, vendor contract, financial commitment, or external action.
+Phase 15 adds **Keystone**, the Governed Execution & Benefits Realization
+control room. It connects initiative intent to internal program charters,
+milestone acceptance criteria, delivery evidence, benefit definitions,
+self-reported measurements, deterministic execution variance, and
+approval-gated corrective actions. Draft programs create no funding authority;
+submitted delivery and benefit evidence remains visibly unverified; assessments
+use no live model or external delivery, finance, customer, HR, or procurement
+systems. Even a valid approval records intent only and never changes a schedule,
+budget, financial commitment, or external system. The durable Appwrite
+foundation now spans 77 explicitly indexed tables.
 
-**Next phase:** Phase 15 — Governed Execution & Benefits Realization:
-programs, milestones, delivery evidence, realized benefits, variance
-management, and approval-bound corrective action.
+**Next phase:** Phase 16 — Federated Enterprise Command: multi-workspace
+operating rollups, delegated governance, cross-workspace policy, privacy-safe
+benchmarks, and evidence-backed executive decision packages.

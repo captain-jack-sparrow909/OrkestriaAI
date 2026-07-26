@@ -1166,6 +1166,146 @@ export type MeridianOverview = {
   decisions: InvestmentDecisionRecord[];
 };
 
+export type ExecutionProgramRecord = {
+  $id: string;
+  workspaceId: string;
+  initiativeId: string;
+  investmentDecisionId?: string;
+  name: string;
+  status: string;
+  phase: string;
+  ownerEmail: string;
+  startDate: string;
+  targetDate: string;
+  budgetCents: number;
+  committedBudgetCents: number;
+  financialCommitmentCreated: number;
+  externalActionsExecuted: number;
+  assumptions: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProgramMilestoneRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  name: string;
+  status: string;
+  sequence: number;
+  targetDate: string;
+  completionBps: number;
+  acceptanceCriteria: string;
+  externallyVerified: number;
+  evidenceCount: number;
+  ownerEmail: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type DeliveryEvidenceRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  milestoneId: string;
+  type: string;
+  source: string;
+  status: string;
+  summary: string;
+  reference: string;
+  userSupplied: number;
+  verified: number;
+  verifierEmail?: string;
+  occurredAt: string;
+  createdAt: string;
+};
+
+export type BenefitMetricRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  name: string;
+  metric: string;
+  baselineValue: number;
+  targetValue: number;
+  unit: string;
+  realizationWindow: string;
+  status: string;
+  verified: number;
+  evidence: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BenefitMeasurementRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  metricId: string;
+  observedValue: number;
+  period: string;
+  source: string;
+  status: string;
+  independentlyVerified: number;
+  evidence: string;
+  financialImpactCents: number;
+  realizedBenefitClaimed: number;
+  recordedBy: string;
+  createdAt: string;
+};
+
+export type ExecutionVarianceRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  dimension: string;
+  status: string;
+  severity: string;
+  baselineValue: number;
+  actualValue: number;
+  varianceValue: number;
+  unit: string;
+  confidenceBps: number;
+  decisionGrade: number;
+  evidence: string;
+  externalSystemsQueried: number;
+  assessedAt: string;
+};
+
+export type CorrectiveActionRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  varianceId: string;
+  title: string;
+  actionType: string;
+  status: string;
+  rationale: string;
+  approvalStatus: string;
+  authorized: number;
+  scheduleChanged: number;
+  budgetChanged: number;
+  financialCommitmentCreated: number;
+  externalActionsExecuted: number;
+  proposedBy: string;
+  decidedBy?: string;
+  createdAt: string;
+  decidedAt?: string;
+};
+
+export type KeystoneOverview = {
+  workspaceId: string;
+  initiatives: PortfolioInitiativeRecord[];
+  investmentDecisions: InvestmentDecisionRecord[];
+  programs: ExecutionProgramRecord[];
+  milestones: ProgramMilestoneRecord[];
+  deliveryEvidence: DeliveryEvidenceRecord[];
+  benefitMetrics: BenefitMetricRecord[];
+  benefitMeasurements: BenefitMeasurementRecord[];
+  variances: ExecutionVarianceRecord[];
+  correctiveActions: CorrectiveActionRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

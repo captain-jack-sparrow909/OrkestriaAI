@@ -85,6 +85,13 @@ test("declares unique Appwrite foundation resources", () => {
       "portfolio_scenarios",
       "portfolio_forecasts",
       "investment_decisions",
+      "execution_programs",
+      "program_milestones",
+      "delivery_evidence",
+      "benefit_metrics",
+      "benefit_measurements",
+      "execution_variances",
+      "corrective_actions",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -156,6 +163,13 @@ test("keeps every queried field indexed", () => {
   const portfolioScenarios = tables.find((table) => table.id === "portfolio_scenarios");
   const portfolioForecasts = tables.find((table) => table.id === "portfolio_forecasts");
   const investmentDecisions = tables.find((table) => table.id === "investment_decisions");
+  const executionPrograms = tables.find((table) => table.id === "execution_programs");
+  const programMilestones = tables.find((table) => table.id === "program_milestones");
+  const deliveryEvidence = tables.find((table) => table.id === "delivery_evidence");
+  const benefitMetrics = tables.find((table) => table.id === "benefit_metrics");
+  const benefitMeasurements = tables.find((table) => table.id === "benefit_measurements");
+  const executionVariances = tables.find((table) => table.id === "execution_variances");
+  const correctiveActions = tables.find((table) => table.id === "corrective_actions");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -221,6 +235,13 @@ test("keeps every queried field indexed", () => {
   assert.ok(portfolioScenarios.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(portfolioForecasts.indexes.some((index) => index.key === "scenario_dimension_unique"));
   assert.ok(investmentDecisions.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(executionPrograms.indexes.some((index) => index.key === "workspace_name_unique"));
+  assert.ok(programMilestones.indexes.some((index) => index.key === "program_sequence_unique"));
+  assert.ok(deliveryEvidence.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(benefitMetrics.indexes.some((index) => index.key === "program_metric_unique"));
+  assert.ok(benefitMeasurements.indexes.some((index) => index.attributes.includes("period")));
+  assert.ok(executionVariances.indexes.some((index) => index.attributes.includes("assessedAt")));
+  assert.ok(correctiveActions.indexes.some((index) => index.attributes.includes("createdAt")));
 });
 
 test("enforces approval and execution roles", () => {
