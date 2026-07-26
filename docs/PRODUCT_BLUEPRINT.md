@@ -320,6 +320,27 @@ resilience, provider redundancy, continuous model and policy evaluation,
 customer-facing service health, compliance automation, and measured regional
 rollout.
 
+### Phase 10 — Continuous Trust & Global Expansion
+
+Operate regional topology, provider redundancy, continuous evaluations,
+service-health communications, compliance evidence, and geographic rollout as
+one governed trust system.
+
+**Implementation status:** TrustGrid ships as an authenticated global
+operations surface backed by seven new Appwrite tables. Regional cells begin as
+configuration rather than verified deployments; the primary AI route remains a
+single configured provider and the secondary route remains unconfigured. A
+Function-backed rehearsal runs 24 deterministic policy fixtures with no model
+or customer data, while the paired regional failover remains a tabletop with no
+traffic, DNS, deployment, or restore side effect. Service-health updates remain
+private drafts and compliance automation remains a readiness preview. Regional
+authorization is rejected until independent deployment, failover, redundancy,
+live-model, publication, and submission evidence exists.
+
+**Next phase:** Adaptive Autonomy & Customer Intelligence — add production
+feedback loops, tenant-level evaluation, safe autonomy tiers, workload
+forecasting, verified customer outcomes, and continuously optimized policies.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

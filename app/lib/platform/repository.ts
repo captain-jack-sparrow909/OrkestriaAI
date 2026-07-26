@@ -12,11 +12,14 @@ import {
   type ConnectorInstallationRecord,
   type CustomRoleRecord,
   type BillingControlRecord,
+  type ComplianceAutomationRecord,
   type EcosystemOverview,
   type EnterpriseConfigRecord,
   type EnterpriseOverview,
   type ActionScopeRecord,
   type ExecutorRegistryRecord,
+  type EvaluationRunRecord,
+  type FailoverDrillRecord,
   type IncidentExerciseRecord,
   type JobRecord,
   type LaunchDecisionRecord,
@@ -32,11 +35,16 @@ import {
   type ProductSignalRecord,
   type ProviderAuthorizationRecord,
   type RecoveryDrillRecord,
+  type RegionalCellRecord,
+  type RegionalRolloutGateRecord,
+  type ProviderRouteRecord,
   type ScaleGateRecord,
   type ScaleOpsOverview,
+  type ServiceHealthUpdateRecord,
   type SupportCaseRecord,
   type SupportRotationRecord,
   type TelemetryRollupRecord,
+  type TrustGridOverview,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -3017,6 +3025,578 @@ export async function recordScaleDecision(input: {
       score: gate.score,
       blockers: blockers.length,
       expansionPerformed: false,
+    },
+  });
+  return gate;
+}
+
+function regionalGateRowId(workspaceId: string) {
+  return enterpriseRowId("regional", workspaceId);
+}
+
+function regionalCellRowId(code: string, workspaceId: string) {
+  return enterpriseRowId(`region_${code}`, workspaceId);
+}
+
+function providerRouteRowId(provider: string, workspaceId: string) {
+  return enterpriseRowId(`route_${provider}`, workspaceId);
+}
+
+async function ensureTrustFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureScaleFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const regions = [
+    {
+      id: regionalCellRowId("eu", workspace.workspaceId),
+      code: "eu-west",
+      name: "EU West control plane",
+      role: "primary",
+      status: "configuration_ready",
+      dataResidency: "eu_pinned",
+      provider: "appwrite_sites",
+      verification: {
+        deploymentObserved: false,
+        trafficObserved: false,
+        residencyExternallyVerified: false,
+      },
+    },
+    {
+      id: regionalCellRowId("us", workspace.workspaceId),
+      code: "us-east",
+      name: "US East expansion cell",
+      role: "secondary",
+      status: "planned",
+      dataResidency: "not_configured",
+      provider: "not_selected",
+      verification: {
+        deploymentObserved: false,
+        trafficObserved: false,
+        residencyExternallyVerified: false,
+      },
+    },
+  ];
+  for (const region of regions) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.regionalCells}/rows`, {
+      rowId: region.id,
+      data: {
+        workspaceId: workspace.workspaceId,
+        code: region.code,
+        name: region.name,
+        role: region.role,
+        status: region.status,
+        trafficPercent: 0,
+        deploymentVerified: 0,
+        dataResidency: region.dataResidency,
+        provider: region.provider,
+        verification: JSON.stringify(region.verification),
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+  const providerRoutes = [
+    {
+      id: providerRouteRowId("deepseek", workspace.workspaceId),
+      provider: "deepseek",
+      role: "primary",
+      status: "configured_single_provider",
+      trafficPercent: 100,
+      configuration: {
+        credentialConfigured: true,
+        liveHealthEvidence: false,
+        automaticFailover: false,
+        secretStoredInWorkspaceRow: false,
+      },
+    },
+    {
+      id: providerRouteRowId("secondary", workspace.workspaceId),
+      provider: "secondary_provider",
+      role: "secondary",
+      status: "not_configured",
+      trafficPercent: 0,
+      configuration: {
+        credentialConfigured: false,
+        liveHealthEvidence: false,
+        automaticFailover: false,
+      },
+    },
+  ];
+  for (const route of providerRoutes) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.providerRoutes}/rows`, {
+      rowId: route.id,
+      data: {
+        workspaceId: workspace.workspaceId,
+        capability: "ai_planning",
+        provider: route.provider,
+        role: route.role,
+        status: route.status,
+        trafficPercent: route.trafficPercent,
+        health: "not_verified_live",
+        configuration: JSON.stringify(route.configuration),
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+  await createIfMissing(appwrite, `${base}/${appwriteTables.regionalRolloutGates}/rows`, {
+    rowId: regionalGateRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      status: "assessing",
+      recommendation: "hold",
+      score: 0,
+      rolloutAuthorized: 0,
+      evidence: "{}",
+      blockers: JSON.stringify(["Regional evidence has not been refreshed."]),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 10,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+            continuousTrust: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+async function assessRegionalRollout(
+  appwrite: NonNullable<ReturnType<typeof getClient>>,
+  workspaceId: string,
+) {
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [regions, providers, failovers, evaluations, health, compliance] =
+    await Promise.all([
+      appwrite.client.request<RowList<RegionalCellRecord>>(
+        `${base}/${appwriteTables.regionalCells}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<ProviderRouteRecord>>(
+        `${base}/${appwriteTables.providerRoutes}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<FailoverDrillRecord>>(
+        `${base}/${appwriteTables.failoverDrills}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<EvaluationRunRecord>>(
+        `${base}/${appwriteTables.evaluationRuns}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<ServiceHealthUpdateRecord>>(
+        `${base}/${appwriteTables.serviceHealthUpdates}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<ComplianceAutomationRecord>>(
+        `${base}/${appwriteTables.complianceAutomations}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+    ]);
+  const evidence = {
+    primaryRegionVerified: regions.rows.some(
+      (region) =>
+        region.role === "primary" &&
+        region.status === "active" &&
+        region.deploymentVerified === 1,
+    ),
+    secondaryRegionVerified: regions.rows.some(
+      (region) =>
+        region.role === "secondary" &&
+        region.status === "active" &&
+        region.deploymentVerified === 1,
+    ),
+    realTrafficFailover: failovers.rows.some(
+      (drill) => drill.trafficShifted === 1 && drill.status === "passed",
+    ),
+    dataRestoreProven: failovers.rows.some(
+      (drill) => drill.dataRestored === 1 && drill.status === "passed",
+    ),
+    providerRedundancyVerified:
+      providers.rows.filter(
+        (route) => route.status === "verified" && route.trafficPercent > 0,
+      ).length >= 2,
+    deterministicEvaluationPassed: evaluations.rows.some(
+      (evaluation) =>
+        evaluation.suite === "policy_boundary_regression" &&
+        evaluation.status === "passed" &&
+        evaluation.score === 100,
+    ),
+    liveModelEvaluationPassed: evaluations.rows.some(
+      (evaluation) =>
+        evaluation.liveModelCalled === 1 &&
+        evaluation.status === "passed" &&
+        evaluation.score >= 95,
+    ),
+    serviceHealthPublished: health.rows.some(
+      (update) => update.status === "published" && update.customerVisible === 1,
+    ),
+    complianceSubmissionVerified: compliance.rows.some(
+      (run) => run.status === "submitted" && run.externalSubmitted === 1,
+    ),
+  };
+  const blockerLabels: Record<keyof typeof evidence, string> = {
+    primaryRegionVerified: "The primary regional deployment has no external verification.",
+    secondaryRegionVerified: "No secondary regional deployment is verified.",
+    realTrafficFailover: "No real customer traffic failover has been proven.",
+    dataRestoreProven: "No regional data restore has been proven.",
+    providerRedundancyVerified: "Independent AI provider redundancy is not verified.",
+    deterministicEvaluationPassed: "The deterministic policy evaluation suite has not passed.",
+    liveModelEvaluationPassed: "No live-model canary evaluation has passed.",
+    serviceHealthPublished: "No customer-visible service health update is published.",
+    complianceSubmissionVerified: "No compliance package has been externally submitted.",
+  };
+  const entries = Object.entries(evidence) as [keyof typeof evidence, boolean][];
+  const blockers = entries.filter(([, passed]) => !passed).map(([key]) => blockerLabels[key]);
+  const score = Math.round((entries.filter(([, passed]) => passed).length / entries.length) * 100);
+  const recommendation = blockers.length === 0 ? "expand" : "hold";
+  const path =
+    `${base}/${appwriteTables.regionalRolloutGates}/rows/${regionalGateRowId(workspaceId)}`;
+  const current = await appwrite.client.request<RegionalRolloutGateRecord>(path);
+  return appwrite.client.request<RegionalRolloutGateRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        status: current.status === "decision_recorded" ? current.status : "assessing",
+        recommendation:
+          current.status === "decision_recorded" ? current.recommendation : recommendation,
+        score,
+        rolloutAuthorized:
+          current.status === "decision_recorded" ? current.rolloutAuthorized : 0,
+        evidence: JSON.stringify(evidence),
+        blockers: JSON.stringify(blockers),
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  });
+}
+
+export async function getTrustGridOverview(
+  email: string,
+  displayName: string,
+): Promise<TrustGridOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureTrustFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view continuous trust operations.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [regions, providers, failovers, evaluations, healthUpdates, compliance, gate] =
+    await Promise.all([
+      appwrite.client.request<RowList<RegionalCellRecord>>(
+        `${base}/${appwriteTables.regionalCells}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<ProviderRouteRecord>>(
+        `${base}/${appwriteTables.providerRoutes}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<FailoverDrillRecord>>(
+        `${base}/${appwriteTables.failoverDrills}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("startedAt"),
+            query.limit(50),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<EvaluationRunRecord>>(
+        `${base}/${appwriteTables.evaluationRuns}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("startedAt"),
+            query.limit(50),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<ServiceHealthUpdateRecord>>(
+        `${base}/${appwriteTables.serviceHealthUpdates}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("createdAt"),
+            query.limit(50),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<ComplianceAutomationRecord>>(
+        `${base}/${appwriteTables.complianceAutomations}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("createdAt"),
+            query.limit(50),
+          ],
+        },
+      ),
+      assessRegionalRollout(appwrite, workspace.workspaceId),
+    ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    regions: regions.rows,
+    providers: providers.rows,
+    failovers: failovers.rows,
+    evaluations: evaluations.rows,
+    healthUpdates: healthUpdates.rows,
+    compliance: compliance.rows,
+    gate,
+  };
+}
+
+export async function runTrustRehearsal(input: {
+  workspaceId: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureTrustFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "agents.run")) {
+    throw new Error("You do not have permission to run trust rehearsals.");
+  }
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          executorId: executorRowId("internal", input.workspaceId),
+        }),
+        async: false,
+        path: "/trust/rehearse",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    failover?: FailoverDrillRecord;
+    evaluation?: EvaluationRunRecord;
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Trust rehearsal returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.failover ||
+    !response.evaluation
+  ) {
+    throw new Error(response?.error || execution.errors || "Trust rehearsal failed.");
+  }
+  return response;
+}
+
+export async function draftServiceHealthUpdate(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to draft service health updates.");
+  }
+  const now = new Date().toISOString();
+  const update = await appwrite.client.request<ServiceHealthUpdateRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.serviceHealthUpdates}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          status: "internal_draft",
+          audience: "customer_status_page",
+          title: "OrkestriaAI service health update draft",
+          summary: "Internal draft based on synthetic evidence. Review real customer impact before publishing.",
+          components: JSON.stringify(["AI planning", "Automation", "Operations"]),
+          customerVisible: 0,
+          createdBy: input.email.toLowerCase(),
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "trust.service_health.drafted",
+    targetType: "service_health_update",
+    targetId: update.$id,
+    metadata: { customerVisible: false, published: false },
+  });
+  return update;
+}
+
+export async function runComplianceAutomationPreview(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [policies, validations, audits] = await Promise.all([
+    appwrite.client.request<RowList<PolicyPackRecord>>(
+      `${base}/${appwriteTables.policyPacks}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<ValidationRunRecord>>(
+      `${base}/${appwriteTables.validationRuns}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<{ $id: string }>>(
+      `${base}/${appwriteTables.auditEvents}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+  ]);
+  const now = new Date().toISOString();
+  const run = await appwrite.client.request<ComplianceAutomationRecord>(
+    `${base}/${appwriteTables.complianceAutomations}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          framework: "SOC 2 readiness",
+          status: "preview_ready",
+          scope: "Policies, validation evidence, and audit event inventory",
+          controlCount: policies.rows.reduce((total, policy) => total + policy.rulesCount, 0),
+          evidenceCount: validations.rows.length + audits.rows.length,
+          externalSubmitted: 0,
+          output: JSON.stringify({
+            preview: true,
+            policies: policies.rows.length,
+            validationRuns: validations.rows.length,
+            auditEventsSampled: audits.rows.length,
+            auditorVerified: false,
+            regulatorSubmitted: false,
+          }),
+          requestedBy: input.email.toLowerCase(),
+          createdAt: now,
+          completedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "trust.compliance.preview_generated",
+    targetType: "compliance_automation",
+    targetId: run.$id,
+    metadata: { externalSubmitted: false, auditorVerified: false },
+  });
+  return run;
+}
+
+export async function refreshRegionalGate(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const gate = await assessRegionalRollout(appwrite, input.workspaceId);
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "trust.regional_evidence.refreshed",
+    targetType: "regional_rollout_gate",
+    targetId: gate.$id,
+    metadata: { recommendation: gate.recommendation, score: gate.score },
+  });
+  return gate;
+}
+
+export async function recordRegionalDecision(input: {
+  workspaceId: string;
+  email: string;
+  decision: "hold" | "expand";
+  rationale: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const assessed = await assessRegionalRollout(appwrite, input.workspaceId);
+  const blockers = JSON.parse(assessed.blockers || "[]") as string[];
+  if (
+    input.decision === "expand" &&
+    (assessed.recommendation !== "expand" || blockers.length)
+  ) {
+    throw new Error("Regional rollout cannot be authorized while trust blockers remain.");
+  }
+  const now = new Date().toISOString();
+  const path =
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.regionalRolloutGates}/rows/${regionalGateRowId(input.workspaceId)}`;
+  const gate = await appwrite.client.request<RegionalRolloutGateRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        status: "decision_recorded",
+        recommendation: input.decision,
+        rolloutAuthorized: input.decision === "expand" ? 1 : 0,
+        decidedBy: input.email.toLowerCase(),
+        decisionRationale: input.rationale.trim().slice(0, 2000),
+        decidedAt: now,
+        updatedAt: now,
+      },
+    },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `trust.regional_decision.${input.decision}`,
+    targetType: "regional_rollout_gate",
+    targetId: gate.$id,
+    metadata: {
+      score: gate.score,
+      blockers: blockers.length,
+      regionalDeploymentPerformed: false,
     },
   });
   return gate;

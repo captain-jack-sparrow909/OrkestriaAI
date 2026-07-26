@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes thirty-five TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes forty-two TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,15 +62,15 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 9 adds **ScaleOps**, the General Availability Operations Control Room.
-It durably tracks executor attestations, source-labelled SLO telemetry,
-incident exercises, internal billing safeguards, customer-support workflows,
-and evidence-bound expansion gates. Synthetic evidence is never presented as
-live pilot traffic, provider execution, customer impact, provider-side billing
-enforcement, or real customer support. Expansion remains disabled while any
-external proof is missing.
+Phase 10 adds **TrustGrid**, the Continuous Trust & Global Expansion control
+plane. It durably tracks regional deployment cells, provider routes, regional
+failover evidence, deterministic and live-model evaluations, service-health
+communications, compliance automation, and regional rollout decisions.
+Configuration is never presented as deployment, table-tops are never presented
+as real traffic failover or restored data, and drafts or previews are never
+presented as external publications or submissions.
 
-**Next phase:** Phase 10 — Continuous Trust & Global Expansion: multi-region
-resilience, provider redundancy, continuous model and policy evaluation,
-customer-facing service health, compliance automation, and measured regional
-rollout.
+**Next phase:** Phase 11 — Adaptive Autonomy & Customer Intelligence:
+production feedback loops, tenant-level evaluation, safe autonomy tiers,
+workload forecasting, verified customer outcomes, and continuously optimized
+policies.

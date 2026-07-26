@@ -50,6 +50,13 @@ test("declares unique Appwrite foundation resources", () => {
       "billing_controls",
       "support_cases",
       "scale_gates",
+      "regional_cells",
+      "provider_routes",
+      "failover_drills",
+      "evaluation_runs",
+      "service_health_updates",
+      "compliance_automations",
+      "regional_rollout_gates",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -86,6 +93,13 @@ test("keeps every queried field indexed", () => {
   const billingControls = tables.find((table) => table.id === "billing_controls");
   const supportCases = tables.find((table) => table.id === "support_cases");
   const scaleGates = tables.find((table) => table.id === "scale_gates");
+  const regionalCells = tables.find((table) => table.id === "regional_cells");
+  const providerRoutes = tables.find((table) => table.id === "provider_routes");
+  const failoverDrills = tables.find((table) => table.id === "failover_drills");
+  const evaluationRuns = tables.find((table) => table.id === "evaluation_runs");
+  const serviceHealthUpdates = tables.find((table) => table.id === "service_health_updates");
+  const complianceAutomations = tables.find((table) => table.id === "compliance_automations");
+  const regionalRolloutGates = tables.find((table) => table.id === "regional_rollout_gates");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -116,6 +130,13 @@ test("keeps every queried field indexed", () => {
   assert.ok(billingControls.indexes.some((index) => index.key === "workspace_unique"));
   assert.ok(supportCases.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(scaleGates.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(regionalCells.indexes.some((index) => index.key === "workspace_code_unique"));
+  assert.ok(providerRoutes.indexes.some((index) => index.key === "workspace_route_unique"));
+  assert.ok(failoverDrills.indexes.some((index) => index.attributes.includes("startedAt")));
+  assert.ok(evaluationRuns.indexes.some((index) => index.attributes.includes("startedAt")));
+  assert.ok(serviceHealthUpdates.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(complianceAutomations.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(regionalRolloutGates.indexes.some((index) => index.key === "workspace_unique"));
 });
 
 test("enforces approval and execution roles", () => {

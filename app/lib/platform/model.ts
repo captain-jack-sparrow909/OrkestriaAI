@@ -553,6 +553,127 @@ export type ScaleOpsOverview = {
   gate: ScaleGateRecord;
 };
 
+export type RegionalCellRecord = {
+  $id: string;
+  workspaceId: string;
+  code: string;
+  name: string;
+  role: string;
+  status: string;
+  trafficPercent: number;
+  deploymentVerified: number;
+  dataResidency: string;
+  provider: string;
+  verification: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProviderRouteRecord = {
+  $id: string;
+  workspaceId: string;
+  capability: string;
+  provider: string;
+  role: string;
+  status: string;
+  trafficPercent: number;
+  health: string;
+  configuration: string;
+  verifiedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type FailoverDrillRecord = {
+  $id: string;
+  workspaceId: string;
+  kind: string;
+  status: string;
+  sourceRegion: string;
+  targetRegion: string;
+  trafficShifted: number;
+  dataRestored: number;
+  observedRtoSeconds: number;
+  evidence: string;
+  initiatedBy: string;
+  startedAt: string;
+  completedAt?: string;
+};
+
+export type EvaluationRunRecord = {
+  $id: string;
+  workspaceId: string;
+  suite: string;
+  status: string;
+  score: number;
+  cases: number;
+  passed: number;
+  failed: number;
+  modelProvider: string;
+  liveModelCalled: number;
+  evidence: string;
+  initiatedBy: string;
+  startedAt: string;
+  completedAt?: string;
+};
+
+export type ServiceHealthUpdateRecord = {
+  $id: string;
+  workspaceId: string;
+  status: string;
+  audience: string;
+  title: string;
+  summary: string;
+  components: string;
+  customerVisible: number;
+  publishedAt?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ComplianceAutomationRecord = {
+  $id: string;
+  workspaceId: string;
+  framework: string;
+  status: string;
+  scope: string;
+  controlCount: number;
+  evidenceCount: number;
+  externalSubmitted: number;
+  output: string;
+  requestedBy: string;
+  createdAt: string;
+  completedAt?: string;
+};
+
+export type RegionalRolloutGateRecord = {
+  $id: string;
+  workspaceId: string;
+  status: string;
+  recommendation: "hold" | "expand";
+  score: number;
+  rolloutAuthorized: number;
+  evidence: string;
+  blockers: string;
+  decidedBy?: string;
+  decisionRationale?: string;
+  createdAt: string;
+  updatedAt: string;
+  decidedAt?: string;
+};
+
+export type TrustGridOverview = {
+  workspaceId: string;
+  regions: RegionalCellRecord[];
+  providers: ProviderRouteRecord[];
+  failovers: FailoverDrillRecord[];
+  evaluations: EvaluationRunRecord[];
+  healthUpdates: ServiceHealthUpdateRecord[];
+  compliance: ComplianceAutomationRecord[];
+  gate: RegionalRolloutGateRecord;
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

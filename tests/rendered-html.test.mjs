@@ -58,7 +58,7 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -260,7 +260,41 @@ test("ships the Phase 9 ScaleOps control room with evidence-bound expansion", as
   assert.match(schema, /id: "billing_controls"/);
   assert.match(schema, /id: "support_cases"/);
   assert.match(schema, /id: "scale_gates"/);
-  assert.match(chrome, /Phase 9 live/);
+  assert.match(chrome, /active === "scale"/);
+});
+
+test("ships the Phase 10 TrustGrid with truthful continuous trust and rollout gates", async () => {
+  const [grid, route, repository, orchestrator, schema, chrome] = await Promise.all([
+    readFile(new URL("../app/trust/TrustGrid.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/trust/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(grid, /Every region/);
+  assert.match(grid, /Region truth/);
+  assert.match(grid, /Run trust rehearsal/);
+  assert.match(grid, /Evaluation truth/);
+  assert.match(grid, /Authorize region/);
+  assert.match(route, /run_compliance_preview/);
+  assert.match(route, /draft_health_update/);
+  assert.match(repository, /configuration_ready/);
+  assert.match(repository, /externalSubmitted: 0/);
+  assert.match(repository, /Regional rollout cannot be authorized while trust blockers remain/);
+  assert.match(orchestrator, /path === "\/trust\/rehearse"/);
+  assert.match(orchestrator, /policy_boundary_regression/);
+  assert.match(orchestrator, /liveModelCalled: 0/);
+  assert.match(orchestrator, /trafficShifted: 0/);
+  assert.match(schema, /id: "regional_cells"/);
+  assert.match(schema, /id: "provider_routes"/);
+  assert.match(schema, /id: "failover_drills"/);
+  assert.match(schema, /id: "evaluation_runs"/);
+  assert.match(schema, /id: "service_health_updates"/);
+  assert.match(schema, /id: "compliance_automations"/);
+  assert.match(schema, /id: "regional_rollout_gates"/);
+  assert.match(chrome, /Phase 10 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

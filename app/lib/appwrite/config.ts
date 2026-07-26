@@ -34,6 +34,13 @@ export const appwriteTables = {
   billingControls: "billing_controls",
   supportCases: "support_cases",
   scaleGates: "scale_gates",
+  regionalCells: "regional_cells",
+  providerRoutes: "provider_routes",
+  failoverDrills: "failover_drills",
+  evaluationRuns: "evaluation_runs",
+  serviceHealthUpdates: "service_health_updates",
+  complianceAutomations: "compliance_automations",
+  regionalRolloutGates: "regional_rollout_gates",
 } as const;
 
 export type AppwriteServerConfig = {
