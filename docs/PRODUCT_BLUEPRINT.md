@@ -486,6 +486,31 @@ load and resilience testing, security review, connector certification,
 operational documentation, onboarding, launch controls, and production
 readiness evidence.
 
+### Phase 17 — ModelOps, Evaluation & AI Quality Governance
+
+Make AI releases inspectable and governable without allowing registry metadata,
+synthetic fixtures, or same-run baselines to impersonate real model quality.
+
+**Implementation status:** Verity ships as an authenticated AI quality control
+surface backed by eight new Appwrite tables. Model candidates begin unverified
+and inactive; prompt versions are immutable drafts that are neither approved nor
+deployed. A four-case golden suite covers approval boundaries, untrusted
+instructions, evidence uncertainty, and cost guardrails. The Function-backed
+runner validates those deterministic fixture contracts but explicitly does not
+call a provider model, store a provider response, evaluate model or prompt
+behavior, use live telemetry, claim decision-grade confidence, or incur provider
+cost. Its three drift dimensions remain baseline-only and cannot claim drift.
+Cost-quality routing policies begin as unapplied shadow drafts at zero percent
+traffic. Human promotion is blocked until model identity, prompt approval,
+live-model evaluation, live drift telemetry, and routing evidence are all
+decision-grade. Holding changes nothing; even a valid approval records intent
+only and never deploys a model, changes traffic, or modifies an external system.
+
+**Next phase:** Phase 18 — General Availability Hardening & Launch: complete
+load and resilience testing, security review, connector certification,
+operational documentation, onboarding, launch controls, and production
+readiness evidence.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

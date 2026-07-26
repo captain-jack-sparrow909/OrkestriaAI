@@ -77,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "federated_enterprise_command",
+      phase: "ai_quality_governance",
       requestId,
     });
   }
@@ -2114,6 +2114,232 @@ async function orchestrator({ req, res, log, error }) {
         externalActionsExecuted: false,
       });
       return res.json({ rollup, benchmarks, requestId });
+    }
+
+    if (path === "/modelops/evaluate" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const suiteId = String(body.suiteId || "").slice(0, 36);
+      const modelVersionId = String(body.modelVersionId || "").slice(0, 36);
+      const promptVersionId = String(body.promptVersionId || "").slice(0, 36);
+      if (!workspaceId || !suiteId || !modelVersionId || !promptVersionId) {
+        return res.json(
+          {
+            error:
+              "workspaceId, suiteId, modelVersionId, and promptVersionId are required",
+            requestId,
+          },
+          400,
+        );
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json(
+          { error: "Model quality evaluations are not allowed for this role", requestId },
+          403,
+        );
+      }
+      const [suite, model, prompt, cases] = await Promise.all([
+        tables.getRow({
+          databaseId: DATABASE_ID,
+          tableId: "evaluation_suites",
+          rowId: suiteId,
+        }),
+        tables.getRow({
+          databaseId: DATABASE_ID,
+          tableId: "ai_model_versions",
+          rowId: modelVersionId,
+        }),
+        tables.getRow({
+          databaseId: DATABASE_ID,
+          tableId: "prompt_versions",
+          rowId: promptVersionId,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "evaluation_cases",
+          queries: [Query.equal("suiteId", [suiteId]), Query.limit(100)],
+          total: false,
+        }),
+      ]);
+      if (
+        [suite.workspaceId, model.workspaceId, prompt.workspaceId].some(
+          (recordWorkspaceId) => recordWorkspaceId !== workspaceId,
+        ) ||
+        prompt.modelVersionId !== modelVersionId
+      ) {
+        return res.json(
+          { error: "ModelOps evaluation inputs do not share one workspace and model", requestId },
+          409,
+        );
+      }
+      const startedAt = new Date();
+      const caseResults = cases.rows.map((item) => {
+        const expected = parseContext(item.expected);
+        const hasContract = Object.keys(expected).length > 0;
+        const passed =
+          item.status === "verified_fixture" &&
+          Number(item.verified) === 1 &&
+          hasContract;
+        return {
+          caseId: item.$id,
+          caseKey: item.caseKey,
+          category: item.category,
+          passed,
+          weightBps: Number(item.weightBps) || 0,
+          fixtureVerified: Number(item.verified) === 1,
+          modelOutputEvaluated: false,
+          expectedContractPresent: hasContract,
+        };
+      });
+      const totalWeight = caseResults.reduce(
+        (total, item) => total + item.weightBps,
+        0,
+      );
+      const passedWeight = caseResults
+        .filter((item) => item.passed)
+        .reduce((total, item) => total + item.weightBps, 0);
+      const scoreBps = totalWeight
+        ? Math.round((passedWeight / totalWeight) * 10000)
+        : 0;
+      const passedCases = caseResults.filter((item) => item.passed).length;
+      const completedAt = new Date();
+      const run = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "model_quality_runs",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          suiteId,
+          modelVersionId,
+          promptVersionId,
+          status:
+            passedCases === caseResults.length && caseResults.length > 0
+              ? "synthetic_contract_passed"
+              : "synthetic_contract_failed",
+          scoreBps,
+          passedCases,
+          failedCases: caseResults.length - passedCases,
+          totalCases: caseResults.length,
+          confidenceBps: 3500,
+          decisionGrade: 0,
+          liveModelCalled: 0,
+          providerResponseStored: 0,
+          estimatedCostCents: 0,
+          evidence: JSON.stringify({
+            basis: "deterministic_contract_fixture",
+            caseResults,
+            goldenSuiteImmutable: Number(suite.immutable) === 1,
+            liveModelCalled: false,
+            providerResponseStored: false,
+            modelBehaviorEvaluated: false,
+            promptBehaviorEvaluated: false,
+            externalTelemetryUsed: false,
+            promotionEvidence: false,
+          }),
+          createdBy: membership.userEmail,
+          startedAt: startedAt.toISOString(),
+          completedAt: completedAt.toISOString(),
+        },
+        permissions: [],
+      });
+      const dimensions = [
+        "safety_contract_coverage",
+        "evidence_contract_coverage",
+        "cost_contract_coverage",
+      ];
+      const driftSignals = await Promise.all(
+        dimensions.map((dimension) =>
+          tables.createRow({
+            databaseId: DATABASE_ID,
+            tableId: "model_drift_signals",
+            rowId: ID.unique(),
+            data: {
+              workspaceId,
+              runId: run.$id,
+              dimension,
+              status: "baseline_only_no_telemetry",
+              baselineBps: scoreBps,
+              currentBps: scoreBps,
+              deltaBps: 0,
+              severity: "unknown",
+              confidenceBps: 3500,
+              decisionGrade: 0,
+              evidence: JSON.stringify({
+                basis: "same_run_synthetic_baseline",
+                independentBaselineAvailable: false,
+                liveTelemetryUsed: false,
+                providerMetricsUsed: false,
+                productionSamplesUsed: false,
+                driftClaimed: false,
+              }),
+              liveTelemetryUsed: 0,
+              createdAt: completedAt.toISOString(),
+            },
+            permissions: [],
+          }),
+        ),
+      );
+      await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "model_quality_contract",
+            quantity: caseResults.length,
+            unit: "evaluation_case",
+            sourceType: "model_quality_run",
+            sourceId: run.$id,
+            period: completedAt.toISOString().slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `model-quality:${run.$id}`,
+            recordedAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "audit_events",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            actorEmail: membership.userEmail,
+            action: "modelops.contract_evaluation.completed",
+            targetType: "model_quality_run",
+            targetId: run.$id,
+            outcome: "success",
+            metadata: JSON.stringify({
+              scoreBps,
+              caseCount: caseResults.length,
+              liveModelCalled: false,
+              modelBehaviorEvaluated: false,
+              liveTelemetryUsed: false,
+              decisionGrade: false,
+              providerCostCents: 0,
+              promotionApplied: false,
+              trafficChanged: false,
+              requestId,
+            }),
+            occurredAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      audit(log, {
+        requestId,
+        event: "modelops.contract_evaluation.completed",
+        workspaceId,
+        runId: run.$id,
+        scoreBps,
+        caseCount: caseResults.length,
+        liveModelCalled: false,
+        modelBehaviorEvaluated: false,
+        liveTelemetryUsed: false,
+        promotionApplied: false,
+        trafficChanged: false,
+      });
+      return res.json({ run, driftSignals, requestId });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

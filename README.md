@@ -62,19 +62,18 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 16 adds **Concord**, the Federated Enterprise Command control room. It
-coordinates proposed workspace relationships, delegated mandates, federated
-policy drafts, bounded operating rollups, clearly synthetic privacy-safe
-reference ranges, and evidence-gated executive packages. A workspace proposal
-grants no access, a mandate proposal stays inactive, and a policy draft is never
-applied automatically. Rollups read only the authorized anchor workspace and
-never query other member workspaces or external systems. Synthetic reference
-ranges use no real tenant records and are not presented as privacy-reviewed
-decision evidence. Even a valid executive approval records intent only and
-never applies policy, activates delegation, creates a financial commitment, or
-executes an external action. The durable Appwrite foundation now spans 84
-explicitly indexed tables.
+Phase 17 adds **Verity**, the ModelOps, Evaluation & AI Quality Governance
+control room. It versions model candidates and prompts, preserves immutable
+golden contracts, runs deterministic evaluation-pipeline checks, creates
+truthfully bounded drift baselines, drafts cost-quality routing at zero
+production traffic, and gates model promotion behind human review. Model
+registration never verifies or activates a provider release, prompt creation
+never approves or deploys it, and contract fixtures never impersonate live-model
+behavior. Drift remains explicitly non-decision-grade without live telemetry.
+Even a valid promotion approval records intent only and never deploys a model,
+changes traffic, or modifies an external system. The durable Appwrite
+foundation now spans 92 explicitly indexed tables.
 
-**Next phase:** Phase 17 — ModelOps, Evaluation & AI Quality Governance:
-model and prompt versioning, golden evaluations, drift signals, cost-quality
-routing, release gates, and human-approved model promotion.
+**Next phase:** Phase 18 — General Availability Hardening & Launch: load and
+resilience testing, security review, connector certification, operational
+documentation, onboarding, launch controls, and production-readiness evidence.

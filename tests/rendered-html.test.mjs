@@ -107,7 +107,7 @@ test("switches to native Appwrite authentication on Appwrite Sites", async () =>
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence", "/ensemble", "/continuum", "/meridian", "/keystone", "/concord"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence", "/ensemble", "/continuum", "/meridian", "/keystone", "/concord", "/verity"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -343,7 +343,7 @@ test("ships the Phase 10 TrustGrid with truthful continuous trust and rollout ga
   assert.match(schema, /id: "service_health_updates"/);
   assert.match(schema, /id: "compliance_automations"/);
   assert.match(schema, /id: "regional_rollout_gates"/);
-  assert.match(chrome, /Phase 16 live/);
+  assert.match(chrome, /Phase 17 live/);
 });
 
 test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () => {
@@ -378,7 +378,7 @@ test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () =>
   assert.match(schema, /id: "customer_outcomes"/);
   assert.match(schema, /id: "policy_recommendations"/);
   assert.match(schema, /id: "autonomy_decisions"/);
-  assert.match(chrome, /Phase 16 live/);
+  assert.match(chrome, /Phase 17 live/);
 });
 
 test("ships Phase 12 Ensemble with bounded collaborative decisioning", async () => {
@@ -415,7 +415,7 @@ test("ships Phase 12 Ensemble with bounded collaborative decisioning", async () 
   assert.match(schema, /id: "executive_briefs"/);
   assert.match(schema, /id: "executive_decisions"/);
   assert.match(chrome, /active === "ensemble"/);
-  assert.match(chrome, /Phase 16 live/);
+  assert.match(chrome, /Phase 17 live/);
 });
 
 test("ships Phase 13 Continuum with truthful organizational memory and digital twins", async () => {
@@ -453,7 +453,7 @@ test("ships Phase 13 Continuum with truthful organizational memory and digital t
   assert.match(schema, /id: "impact_forecasts"/);
   assert.match(schema, /id: "memory_promotions"/);
   assert.match(chrome, /active === "continuum"/);
-  assert.match(chrome, /Phase 16 live/);
+  assert.match(chrome, /Phase 17 live/);
 });
 
 test("ships Phase 14 Meridian with evidence-gated portfolio intelligence", async () => {
@@ -491,7 +491,7 @@ test("ships Phase 14 Meridian with evidence-gated portfolio intelligence", async
   assert.match(schema, /id: "portfolio_forecasts"/);
   assert.match(schema, /id: "investment_decisions"/);
   assert.match(chrome, /active === "meridian"/);
-  assert.match(chrome, /Phase 16 live/);
+  assert.match(chrome, /Phase 17 live/);
 });
 
 test("ships Phase 15 Keystone with evidence-gated execution and benefits", async () => {
@@ -533,7 +533,7 @@ test("ships Phase 15 Keystone with evidence-gated execution and benefits", async
   assert.match(schema, /id: "execution_variances"/);
   assert.match(schema, /id: "corrective_actions"/);
   assert.match(chrome, /active === "keystone"/);
-  assert.match(chrome, /Phase 16 live/);
+  assert.match(chrome, /Phase 17 live/);
 });
 
 test("ships Phase 16 Concord with bounded federated enterprise command", async () => {
@@ -575,7 +575,49 @@ test("ships Phase 16 Concord with bounded federated enterprise command", async (
   assert.match(schema, /id: "privacy_benchmarks"/);
   assert.match(schema, /id: "executive_decision_packages"/);
   assert.match(chrome, /active === "concord"/);
-  assert.match(chrome, /Phase 16 live/);
+  assert.match(chrome, /Phase 17 live/);
+});
+
+test("ships Phase 17 Verity with evidence-gated AI quality governance", async () => {
+  const [verity, route, repository, orchestrator, schema, chrome] =
+    await Promise.all([
+      readFile(new URL("../app/verity/VerityControl.tsx", import.meta.url), "utf8"),
+      readFile(new URL("../app/api/verity/route.ts", import.meta.url), "utf8"),
+      readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+      readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+      readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+      readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+    ]);
+
+  assert.match(verity, /Ship intelligence with/);
+  assert.match(verity, /Model &amp; prompt lineage/);
+  assert.match(verity, /Contract evidence chamber/);
+  assert.match(verity, /Telemetry without theater/);
+  assert.match(verity, /Shadow route forge/);
+  assert.match(verity, /Promotion decision room/);
+  assert.match(route, /register_model/);
+  assert.match(route, /create_prompt/);
+  assert.match(route, /run_evaluation/);
+  assert.match(route, /draft_routing/);
+  assert.match(route, /request_promotion/);
+  assert.match(route, /decide_promotion/);
+  assert.match(repository, /registered_unverified/);
+  assert.match(repository, /Model promotion cannot be approved while evidence blockers remain/);
+  assert.match(repository, /"approved_no_rollout"/);
+  assert.match(orchestrator, /path === "\/modelops\/evaluate"/);
+  assert.match(orchestrator, /deterministic_contract_fixture/);
+  assert.match(orchestrator, /modelBehaviorEvaluated: false/);
+  assert.match(orchestrator, /liveTelemetryUsed: 0/);
+  assert.match(schema, /id: "ai_model_versions"/);
+  assert.match(schema, /id: "prompt_versions"/);
+  assert.match(schema, /id: "evaluation_suites"/);
+  assert.match(schema, /id: "evaluation_cases"/);
+  assert.match(schema, /id: "model_quality_runs"/);
+  assert.match(schema, /id: "model_drift_signals"/);
+  assert.match(schema, /id: "model_routing_policies"/);
+  assert.match(schema, /id: "model_promotion_decisions"/);
+  assert.match(chrome, /active === "verity"/);
+  assert.match(chrome, /Phase 17 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

@@ -1440,6 +1440,163 @@ export type ConcordOverview = {
   packages: ExecutiveDecisionPackageRecord[];
 };
 
+export type AiModelVersionRecord = {
+  $id: string;
+  workspaceId: string;
+  provider: string;
+  modelKey: string;
+  displayName: string;
+  version: string;
+  purpose: string;
+  status: string;
+  verified: number;
+  active: number;
+  sourceMetadata: string;
+  registeredBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PromptVersionRecord = {
+  $id: string;
+  workspaceId: string;
+  promptKey: string;
+  name: string;
+  version: number;
+  status: string;
+  content: string;
+  contentHash: string;
+  modelVersionId: string;
+  approved: number;
+  deployed: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EvaluationSuiteRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  version: number;
+  status: string;
+  purpose: string;
+  passThresholdBps: number;
+  caseCount: number;
+  immutable: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EvaluationCaseRecord = {
+  $id: string;
+  workspaceId: string;
+  suiteId: string;
+  caseKey: string;
+  category: string;
+  input: string;
+  expected: string;
+  weightBps: number;
+  status: string;
+  verified: number;
+  createdAt: string;
+};
+
+export type ModelQualityRunRecord = {
+  $id: string;
+  workspaceId: string;
+  suiteId: string;
+  modelVersionId: string;
+  promptVersionId: string;
+  status: string;
+  scoreBps: number;
+  passedCases: number;
+  failedCases: number;
+  totalCases: number;
+  confidenceBps: number;
+  decisionGrade: number;
+  liveModelCalled: number;
+  providerResponseStored: number;
+  estimatedCostCents: number;
+  evidence: string;
+  createdBy: string;
+  startedAt: string;
+  completedAt: string;
+};
+
+export type ModelDriftSignalRecord = {
+  $id: string;
+  workspaceId: string;
+  runId: string;
+  dimension: string;
+  status: string;
+  baselineBps: number;
+  currentBps: number;
+  deltaBps: number;
+  severity: string;
+  confidenceBps: number;
+  decisionGrade: number;
+  evidence: string;
+  liveTelemetryUsed: number;
+  createdAt: string;
+};
+
+export type ModelRoutingPolicyRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  capability: string;
+  status: string;
+  primaryModelVersionId: string;
+  fallbackModelVersionId?: string;
+  qualityFloorBps: number;
+  costCeilingCents: number;
+  trafficPercent: number;
+  verified: number;
+  applied: number;
+  externalRoutingChanged: number;
+  policyJson: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ModelPromotionDecisionRecord = {
+  $id: string;
+  workspaceId: string;
+  modelVersionId: string;
+  promptVersionId: string;
+  qualityRunId: string;
+  routingPolicyId?: string;
+  title: string;
+  status: string;
+  decision: string;
+  rationale: string;
+  approvalStatus: string;
+  authorized: number;
+  promotionApplied: number;
+  trafficChanged: number;
+  externalSystemsChanged: number;
+  gateSnapshot: string;
+  requestedBy: string;
+  decidedBy?: string;
+  createdAt: string;
+  decidedAt?: string;
+};
+
+export type VerityOverview = {
+  workspaceId: string;
+  models: AiModelVersionRecord[];
+  prompts: PromptVersionRecord[];
+  suites: EvaluationSuiteRecord[];
+  cases: EvaluationCaseRecord[];
+  runs: ModelQualityRunRecord[];
+  driftSignals: ModelDriftSignalRecord[];
+  routingPolicies: ModelRoutingPolicyRecord[];
+  promotions: ModelPromotionDecisionRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

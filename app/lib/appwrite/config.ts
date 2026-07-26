@@ -83,6 +83,14 @@ export const appwriteTables = {
   enterpriseRollups: "enterprise_rollups",
   privacyBenchmarks: "privacy_benchmarks",
   executiveDecisionPackages: "executive_decision_packages",
+  aiModelVersions: "ai_model_versions",
+  promptVersions: "prompt_versions",
+  evaluationSuites: "evaluation_suites",
+  evaluationCases: "evaluation_cases",
+  modelQualityRuns: "model_quality_runs",
+  modelDriftSignals: "model_drift_signals",
+  modelRoutingPolicies: "model_routing_policies",
+  modelPromotionDecisions: "model_promotion_decisions",
 } as const;
 
 export type AppwriteServerConfig = {

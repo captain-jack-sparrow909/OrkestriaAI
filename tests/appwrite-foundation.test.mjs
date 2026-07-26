@@ -99,6 +99,14 @@ test("declares unique Appwrite foundation resources", () => {
       "enterprise_rollups",
       "privacy_benchmarks",
       "executive_decision_packages",
+      "ai_model_versions",
+      "prompt_versions",
+      "evaluation_suites",
+      "evaluation_cases",
+      "model_quality_runs",
+      "model_drift_signals",
+      "model_routing_policies",
+      "model_promotion_decisions",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -184,6 +192,14 @@ test("keeps every queried field indexed", () => {
   const enterpriseRollups = tables.find((table) => table.id === "enterprise_rollups");
   const privacyBenchmarks = tables.find((table) => table.id === "privacy_benchmarks");
   const executiveDecisionPackages = tables.find((table) => table.id === "executive_decision_packages");
+  const aiModelVersions = tables.find((table) => table.id === "ai_model_versions");
+  const promptVersions = tables.find((table) => table.id === "prompt_versions");
+  const evaluationSuites = tables.find((table) => table.id === "evaluation_suites");
+  const evaluationCases = tables.find((table) => table.id === "evaluation_cases");
+  const modelQualityRuns = tables.find((table) => table.id === "model_quality_runs");
+  const modelDriftSignals = tables.find((table) => table.id === "model_drift_signals");
+  const modelRoutingPolicies = tables.find((table) => table.id === "model_routing_policies");
+  const modelPromotionDecisions = tables.find((table) => table.id === "model_promotion_decisions");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -263,6 +279,14 @@ test("keeps every queried field indexed", () => {
   assert.ok(enterpriseRollups.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(privacyBenchmarks.indexes.some((index) => index.key === "rollup_metric_unique"));
   assert.ok(executiveDecisionPackages.indexes.some((index) => index.attributes.includes("approvalStatus")));
+  assert.ok(aiModelVersions.indexes.some((index) => index.key === "workspace_model_version_unique"));
+  assert.ok(promptVersions.indexes.some((index) => index.key === "workspace_prompt_version_unique"));
+  assert.ok(evaluationSuites.indexes.some((index) => index.key === "workspace_name_version_unique"));
+  assert.ok(evaluationCases.indexes.some((index) => index.key === "suite_case_unique"));
+  assert.ok(modelQualityRuns.indexes.some((index) => index.attributes.includes("completedAt")));
+  assert.ok(modelDriftSignals.indexes.some((index) => index.key === "run_dimension_unique"));
+  assert.ok(modelRoutingPolicies.indexes.some((index) => index.key === "workspace_capability_name_unique"));
+  assert.ok(modelPromotionDecisions.indexes.some((index) => index.attributes.includes("approvalStatus")));
 });
 
 test("enforces approval and execution roles", () => {
