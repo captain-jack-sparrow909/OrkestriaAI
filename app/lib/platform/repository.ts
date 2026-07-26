@@ -1,5 +1,6 @@
 import { appwriteTables, getAppwriteServerConfig } from "../appwrite/config";
 import { AppwriteRestClient, query } from "../appwrite/rest";
+import { validateConnectorManifest } from "../ecosystem/manifest";
 import {
   can,
   isWorkspaceRole,
@@ -7,11 +8,17 @@ import {
   type AgentPlanResult,
   type ApprovalRecord,
   type ComplianceExportRecord,
+  type ConnectorCatalogRecord,
+  type ConnectorInstallationRecord,
   type CustomRoleRecord,
+  type EcosystemOverview,
   type EnterpriseConfigRecord,
   type EnterpriseOverview,
   type MembershipRecord,
+  type PartnerSubmissionRecord,
   type PolicyPackRecord,
+  type PolicyTemplateRecord,
+  type ProductSignalRecord,
 } from "./model";
 
 type RowList<T> = {
@@ -915,4 +922,594 @@ export async function buildComplianceExport(input: {
     })),
     note: "This snapshot reports configured OrkestriaAI controls. External SAML, SCIM, and private-network connectivity must be verified independently.",
   };
+}
+
+async function ensureEcosystemFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureEnterpriseFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  const catalogSeeds = [
+    {
+      id: "con_github",
+      slug: "github",
+      name: "GitHub",
+      category: "Code & CI",
+      description: "Repositories, pull requests, checks, releases, and security findings.",
+      publisher: "Orkestria Verified",
+      authType: "OAuth 2.0",
+      version: "2.1.0",
+      capabilities: ["pull_requests", "checks", "releases", "code_scanning"],
+      agentKeys: ["loom", "tempo", "aegis"],
+      actionsCount: 14,
+      featured: 1,
+    },
+    {
+      id: "con_slack",
+      slug: "slack",
+      name: "Slack",
+      category: "Collaboration",
+      description: "Channels, messages, incident rooms, approvals, and notifications.",
+      publisher: "Orkestria Verified",
+      authType: "OAuth 2.0",
+      version: "1.8.0",
+      capabilities: ["messages", "channels", "threads", "approvals"],
+      agentKeys: ["vela", "loom", "tempo"],
+      actionsCount: 9,
+      featured: 1,
+    },
+    {
+      id: "con_aws",
+      slug: "aws",
+      name: "Amazon Web Services",
+      category: "Cloud",
+      description: "Cost, inventory, utilization, alerts, and guarded infrastructure actions.",
+      publisher: "Orkestria Verified",
+      authType: "Role federation",
+      version: "3.0.0",
+      capabilities: ["cost_explorer", "cloudwatch", "inventory", "changes"],
+      agentKeys: ["tempo", "helio", "aegis"],
+      actionsCount: 18,
+      featured: 1,
+    },
+    {
+      id: "con_datadog",
+      slug: "datadog",
+      name: "Datadog",
+      category: "Observability",
+      description: "Metrics, logs, traces, monitors, incidents, and deployment markers.",
+      publisher: "Orkestria Verified",
+      authType: "API key",
+      version: "1.6.0",
+      capabilities: ["metrics", "logs", "traces", "monitors"],
+      agentKeys: ["tempo"],
+      actionsCount: 12,
+      featured: 0,
+    },
+    {
+      id: "con_google",
+      slug: "google-workspace",
+      name: "Google Workspace",
+      category: "Productivity",
+      description: "Gmail, Calendar, Drive, Sheets, and approval-safe document workflows.",
+      publisher: "Orkestria Verified",
+      authType: "OAuth 2.0",
+      version: "2.4.0",
+      capabilities: ["mail", "calendar", "drive", "sheets"],
+      agentKeys: ["vela", "loom"],
+      actionsCount: 16,
+      featured: 0,
+    },
+    {
+      id: "con_stripe",
+      slug: "stripe",
+      name: "Stripe",
+      category: "Finance",
+      description: "Customers, invoices, subscriptions, disputes, and gated refunds.",
+      publisher: "Orkestria Verified",
+      authType: "OAuth 2.0",
+      version: "1.3.0",
+      capabilities: ["customers", "invoices", "subscriptions", "refunds"],
+      agentKeys: ["vela", "loom", "helio"],
+      actionsCount: 8,
+      featured: 0,
+    },
+    {
+      id: "con_jira",
+      slug: "jira",
+      name: "Jira",
+      category: "Delivery",
+      description: "Issues, projects, sprints, incidents, and change-management evidence.",
+      publisher: "Orkestria Verified",
+      authType: "OAuth 2.0",
+      version: "1.9.0",
+      capabilities: ["issues", "projects", "sprints", "changes"],
+      agentKeys: ["loom", "tempo", "aegis"],
+      actionsCount: 11,
+      featured: 0,
+    },
+    {
+      id: "con_appwrite",
+      slug: "appwrite",
+      name: "Appwrite",
+      category: "Platform",
+      description: "Projects, functions, databases, storage, executions, and platform health.",
+      publisher: "Orkestria Labs",
+      authType: "API key",
+      version: "1.0.0",
+      capabilities: ["functions", "tables", "storage", "health"],
+      agentKeys: ["loom", "tempo", "aegis"],
+      actionsCount: 13,
+      featured: 0,
+    },
+  ];
+  for (const connector of catalogSeeds) {
+    await createIfMissing(
+      appwrite,
+      `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.connectorCatalog}/rows`,
+      {
+        rowId: connector.id,
+        data: {
+          slug: connector.slug,
+          name: connector.name,
+          category: connector.category,
+          description: connector.description,
+          publisher: connector.publisher,
+          publisherType: "verified",
+          authType: connector.authType,
+          version: connector.version,
+          status: "available",
+          capabilities: JSON.stringify(connector.capabilities),
+          agentKeys: JSON.stringify(connector.agentKeys),
+          actionsCount: connector.actionsCount,
+          featured: connector.featured,
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    );
+  }
+
+  const policySeeds = [
+    {
+      id: "tpl_hipaa",
+      slug: "healthcare-safety",
+      name: "Healthcare Safety",
+      industry: "Healthcare",
+      description: "PHI boundaries, minimum necessary access, and evidence retention.",
+      framework: "HIPAA",
+      version: "1.0",
+      rulesCount: 28,
+      content: { approvals: ["phi_export", "patient_update"], retentionDays: 2190 },
+      featured: 1,
+    },
+    {
+      id: "tpl_sox",
+      slug: "financial-operations",
+      name: "Financial Operations",
+      industry: "Financial Services",
+      description: "Segregation of duties, payment controls, and immutable evidence.",
+      framework: "SOX",
+      version: "1.2",
+      rulesCount: 34,
+      content: { approvals: ["payment", "refund", "ledger_write"], dualControl: true },
+      featured: 1,
+    },
+    {
+      id: "tpl_saas",
+      slug: "saas-trust",
+      name: "SaaS Trust",
+      industry: "B2B SaaS",
+      description: "Tenant isolation, production changes, and customer-data handling.",
+      framework: "SOC 2",
+      version: "2.0",
+      rulesCount: 31,
+      content: { controls: ["CC6", "CC7", "CC8"], evidence: "continuous" },
+      featured: 0,
+    },
+    {
+      id: "tpl_nist",
+      slug: "public-sector-boundary",
+      name: "Public Sector Boundary",
+      industry: "Public Sector",
+      description: "Regional boundaries, privileged access, and NIST-aligned response.",
+      framework: "NIST 800-53",
+      version: "1.1",
+      rulesCount: 42,
+      content: { controls: ["AC", "AU", "IR", "SC"], regionPinned: true },
+      featured: 0,
+    },
+  ];
+  for (const template of policySeeds) {
+    await createIfMissing(
+      appwrite,
+      `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.policyTemplates}/rows`,
+      {
+        rowId: template.id,
+        data: {
+          slug: template.slug,
+          name: template.name,
+          industry: template.industry,
+          description: template.description,
+          framework: template.framework,
+          version: template.version,
+          rulesCount: template.rulesCount,
+          content: JSON.stringify(template.content),
+          status: "available",
+          featured: template.featured,
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    );
+  }
+
+  const suffix = workspace.workspaceId.replace(/^ws_/, "").slice(0, 18);
+  const signalSeeds = [
+    {
+      id: `sig_observe_${suffix}`,
+      source: "coverage",
+      kind: "connector_gap",
+      title: "Close the observability context gap",
+      description: "Tempo has no installed observability connector in this workspace.",
+      priority: "high",
+      score: 84,
+      evidence: "No Datadog installation record exists for the workspace.",
+      recommendation: "Install Datadog as a configuration-required draft, then authorize it with least-privilege scopes.",
+    },
+    {
+      id: `sig_policy_${suffix}`,
+      source: "governance",
+      kind: "vertical_policy",
+      title: "Add a vertical policy baseline",
+      description: "Enterprise controls are active, but no industry policy template has been installed.",
+      priority: "medium",
+      score: 72,
+      evidence: "The policy catalog contains no workspace-installed vertical template.",
+      recommendation: "Review the policy template that matches the workspace's regulated context before enforcing it.",
+    },
+    {
+      id: `sig_sdk_${suffix}`,
+      source: "ecosystem",
+      kind: "partner_extension",
+      title: "Package one internal system as a connector",
+      description: "The partner manifest SDK can make internal tools inherit OrkestriaAI guardrails.",
+      priority: "low",
+      score: 58,
+      evidence: "No partner connector manifest has been validated for this workspace.",
+      recommendation: "Validate a draft manifest; publishing remains a separate reviewed action.",
+    },
+  ];
+  for (const signal of signalSeeds) {
+    await createIfMissing(
+      appwrite,
+      `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.productSignals}/rows`,
+      {
+        rowId: signal.id.slice(0, 36),
+        data: {
+          workspaceId: workspace.workspaceId,
+          source: signal.source,
+          kind: signal.kind,
+          title: signal.title,
+          description: signal.description,
+          status: "open",
+          priority: signal.priority,
+          score: signal.score,
+          evidence: signal.evidence,
+          recommendation: signal.recommendation,
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    );
+  }
+
+  await appwrite.client.request(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 6,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+export async function getEcosystemOverview(
+  email: string,
+  displayName: string,
+): Promise<EcosystemOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureEcosystemFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view the ecosystem.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [catalog, installations, templates, policies, signals, submissions] =
+    await Promise.all([
+      appwrite.client.request<RowList<ConnectorCatalogRecord>>(
+        `${base}/${appwriteTables.connectorCatalog}/rows`,
+        { queries: [query.limit(100)], ttl: 60 },
+      ),
+      appwrite.client.request<RowList<ConnectorInstallationRecord>>(
+        `${base}/${appwriteTables.connectorInstallations}/rows`,
+        {
+          queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)],
+          ttl: 5,
+        },
+      ),
+      appwrite.client.request<RowList<PolicyTemplateRecord>>(
+        `${base}/${appwriteTables.policyTemplates}/rows`,
+        { queries: [query.limit(100)], ttl: 60 },
+      ),
+      appwrite.client.request<RowList<PolicyPackRecord>>(
+        `${base}/${appwriteTables.policyPacks}/rows`,
+        {
+          queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)],
+          ttl: 5,
+        },
+      ),
+      appwrite.client.request<RowList<ProductSignalRecord>>(
+        `${base}/${appwriteTables.productSignals}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("createdAt"),
+            query.limit(50),
+          ],
+          ttl: 5,
+        },
+      ),
+      appwrite.client.request<RowList<PartnerSubmissionRecord>>(
+        `${base}/${appwriteTables.partnerSubmissions}/rows`,
+        {
+          queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(50)],
+          ttl: 5,
+        },
+      ),
+    ]);
+  const activePolicyTemplateSlugs = policies.rows.flatMap((policy) => {
+    try {
+      const content = JSON.parse(policy.content || "{}");
+      return typeof content.templateSlug === "string" ? [content.templateSlug] : [];
+    } catch {
+      return [];
+    }
+  });
+  return {
+    workspaceId: workspace.workspaceId,
+    catalog: catalog.rows,
+    installations: installations.rows,
+    policyTemplates: templates.rows,
+    activePolicyTemplateSlugs,
+    signals: signals.rows,
+    submissions: submissions.rows,
+  };
+}
+
+export async function installEcosystemConnector(input: {
+  workspaceId: string;
+  connectorId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const connector = await appwrite.client.request<ConnectorCatalogRecord>(
+    `${base}/${appwriteTables.connectorCatalog}/rows/${input.connectorId}`,
+  );
+  if (connector.status !== "available") throw new Error("This connector is not available.");
+  const now = new Date().toISOString();
+  const key = await sha256(`${input.workspaceId}:${connector.$id}`);
+  const rowId = `inst_${key.slice(0, 31)}`;
+  await createIfMissing(
+    appwrite,
+    `${base}/${appwriteTables.connectorInstallations}/rows`,
+    {
+      rowId,
+      data: {
+        workspaceId: input.workspaceId,
+        connectorId: connector.$id,
+        connectorSlug: connector.slug,
+        status: "configuration_required",
+        authStatus: "not_authorized",
+        environment: "production",
+        installedBy: input.email.toLowerCase(),
+        config: JSON.stringify({
+          requestedScopes: JSON.parse(connector.capabilities || "[]"),
+          authorization: "not_started",
+        }),
+        installedAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    },
+  );
+  const installation = await appwrite.client.request<ConnectorInstallationRecord>(
+    `${base}/${appwriteTables.connectorInstallations}/rows/${rowId}`,
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ecosystem.connector.installed",
+    targetType: "connector_installation",
+    targetId: rowId,
+    metadata: {
+      connector: connector.slug,
+      status: "configuration_required",
+      authStatus: "not_authorized",
+    },
+  });
+  return installation;
+}
+
+export async function activateVerticalPolicy(input: {
+  workspaceId: string;
+  templateId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const template = await appwrite.client.request<PolicyTemplateRecord>(
+    `${base}/${appwriteTables.policyTemplates}/rows/${input.templateId}`,
+  );
+  if (template.status !== "available") throw new Error("This policy template is unavailable.");
+  const key = await sha256(`${input.workspaceId}:${template.slug}`);
+  const rowId = `vpack_${key.slice(0, 30)}`;
+  const now = new Date().toISOString();
+  await createIfMissing(appwrite, `${base}/${appwriteTables.policyPacks}/rows`, {
+    rowId,
+    data: {
+      workspaceId: input.workspaceId,
+      name: template.name,
+      framework: template.framework,
+      version: template.version,
+      mode: "monitor",
+      status: "active",
+      rulesCount: template.rulesCount,
+      coverage: 100,
+      content: JSON.stringify({
+        templateId: template.$id,
+        templateSlug: template.slug,
+        rules: JSON.parse(template.content || "{}"),
+      }),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  const policy = await appwrite.client.request<PolicyPackRecord>(
+    `${base}/${appwriteTables.policyPacks}/rows/${rowId}`,
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ecosystem.policy_template.activated",
+    targetType: "policy_pack",
+    targetId: rowId,
+    metadata: { template: template.slug, mode: "monitor" },
+  });
+  return policy;
+}
+
+export async function acknowledgeProductSignal(input: {
+  workspaceId: string;
+  signalId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to acknowledge intelligence signals.");
+  }
+  const path =
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.productSignals}/rows/${input.signalId}`;
+  const current = await appwrite.client.request<ProductSignalRecord>(path);
+  if (current.workspaceId !== input.workspaceId) throw new Error("Signal is not in this workspace.");
+  const signal = await appwrite.client.request<ProductSignalRecord>(path, {
+    method: "PATCH",
+    body: { data: { status: "acknowledged", updatedAt: new Date().toISOString() } },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ecosystem.signal.acknowledged",
+    targetType: "product_signal",
+    targetId: input.signalId,
+    metadata: { kind: current.kind },
+  });
+  return signal;
+}
+
+export async function savePartnerManifest(input: {
+  workspaceId: string;
+  email: string;
+  manifest: unknown;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const validation = validateConnectorManifest(input.manifest);
+  if (!validation.valid || !validation.manifest) {
+    throw new Error(validation.errors.join(" "));
+  }
+  const manifest = validation.manifest;
+  const key = await sha256(`${input.workspaceId}:${manifest.slug}`);
+  const rowId = `partner_${key.slice(0, 28)}`;
+  const path =
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.partnerSubmissions}/rows`;
+  const now = new Date().toISOString();
+  const data = {
+    workspaceId: input.workspaceId,
+    name: manifest.name,
+    connectorSlug: manifest.slug,
+    manifest: JSON.stringify(manifest),
+    status: "validated_draft",
+    validation: JSON.stringify({
+      valid: true,
+      actionCount: manifest.actions.length,
+      approvalGatedActions: manifest.actions.filter((action) => action.requiresApproval).length,
+    }),
+    submittedBy: input.email.toLowerCase(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  try {
+    await appwrite.client.request(path, {
+      method: "POST",
+      body: { rowId, data, permissions: [] },
+    });
+  } catch (error) {
+    if (!(error instanceof Error && "status" in error && error.status === 409)) throw error;
+    await appwrite.client.request(`${path}/${rowId}`, {
+      method: "PATCH",
+      body: {
+        data: {
+          name: data.name,
+          manifest: data.manifest,
+          status: data.status,
+          validation: data.validation,
+          submittedBy: data.submittedBy,
+          updatedAt: now,
+        },
+      },
+    });
+  }
+  const submission = await appwrite.client.request<PartnerSubmissionRecord>(
+    `${path}/${rowId}`,
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ecosystem.partner_manifest.validated",
+    targetType: "partner_submission",
+    targetId: rowId,
+    metadata: {
+      slug: manifest.slug,
+      version: manifest.version,
+      actions: manifest.actions.length,
+      publishing: "not_requested",
+    },
+  });
+  return submission;
 }

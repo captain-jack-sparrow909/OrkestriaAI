@@ -169,6 +169,7 @@ export function DashboardClient({
             </button>
           ))}
           <Link href="/enterprise"><i className="enterprise-nav-mark">◇</i><span>Enterprise</span></Link>
+          <Link href="/ecosystem"><i className="ecosystem-nav-mark">✦</i><span>Ecosystem</span></Link>
           <span className="app-nav-label">Agents</span>
           {[
             ["V", "Vela", "violet", "/vela"],
@@ -182,7 +183,7 @@ export function DashboardClient({
         </nav>
         <div className="sidebar-bottom">
           <Link href="/enterprise">⌾ <span>Governance</span></Link>
-          <Link href="/products">⚙ <span>Connections</span></Link>
+          <Link href="/ecosystem">⚙ <span>Connections</span></Link>
           <a href="/signout-with-chatgpt?return_to=%2F">↪ <span>Sign out</span></a>
         </div>
       </aside>

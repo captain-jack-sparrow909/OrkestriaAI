@@ -58,7 +58,7 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -141,7 +141,35 @@ test("ships the Phase 5 enterprise trust fabric with durable governance", async 
   assert.match(schema, /id: "custom_roles"/);
   assert.match(schema, /id: "policy_packs"/);
   assert.match(schema, /id: "compliance_exports"/);
-  assert.match(chrome, /Phase 5 live/);
+  assert.match(chrome, /active === "enterprise"/);
+});
+
+test("ships the Phase 6 governed ecosystem exchange and partner manifest SDK", async () => {
+  const [exchange, route, repository, manifest, schema, chrome] = await Promise.all([
+    readFile(new URL("../app/ecosystem/EcosystemExchange.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/ecosystem/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/ecosystem/manifest.ts", import.meta.url), "utf8"),
+    readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(exchange, /Connect the tools/);
+  assert.match(exchange, /Installation is not authorization/);
+  assert.match(exchange, /Partner manifest SDK/i);
+  assert.match(exchange, /Continuous product intelligence/);
+  assert.match(route, /install_connector/);
+  assert.match(route, /save_manifest/);
+  assert.match(repository, /configuration_required/);
+  assert.match(repository, /validated_draft/);
+  assert.match(repository, /mode: "monitor"/);
+  assert.match(manifest, /risk === "high" \|\| risk === "critical"/);
+  assert.match(schema, /id: "connector_catalog"/);
+  assert.match(schema, /id: "connector_installations"/);
+  assert.match(schema, /id: "policy_templates"/);
+  assert.match(schema, /id: "product_signals"/);
+  assert.match(schema, /id: "partner_submissions"/);
+  assert.match(chrome, /Phase 6 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

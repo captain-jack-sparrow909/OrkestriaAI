@@ -174,6 +174,90 @@ export type EnterpriseOverview = {
   exports: ComplianceExportRecord[];
 };
 
+export type ConnectorCatalogRecord = {
+  $id: string;
+  slug: string;
+  name: string;
+  category: string;
+  description: string;
+  publisher: string;
+  publisherType: string;
+  authType: string;
+  version: string;
+  status: string;
+  capabilities: string;
+  agentKeys: string;
+  actionsCount: number;
+  featured: number;
+};
+
+export type ConnectorInstallationRecord = {
+  $id: string;
+  workspaceId: string;
+  connectorId: string;
+  connectorSlug: string;
+  status: string;
+  authStatus: string;
+  environment: string;
+  installedBy: string;
+  config: string;
+  installedAt: string;
+  updatedAt: string;
+};
+
+export type PolicyTemplateRecord = {
+  $id: string;
+  slug: string;
+  name: string;
+  industry: string;
+  description: string;
+  framework: string;
+  version: string;
+  rulesCount: number;
+  content: string;
+  status: string;
+  featured: number;
+};
+
+export type ProductSignalRecord = {
+  $id: string;
+  workspaceId: string;
+  source: string;
+  kind: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  score: number;
+  evidence: string;
+  recommendation: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PartnerSubmissionRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  connectorSlug: string;
+  manifest: string;
+  status: string;
+  validation: string;
+  submittedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type EcosystemOverview = {
+  workspaceId: string;
+  catalog: ConnectorCatalogRecord[];
+  installations: ConnectorInstallationRecord[];
+  policyTemplates: PolicyTemplateRecord[];
+  activePolicyTemplateSlugs: string[];
+  signals: ProductSignalRecord[];
+  submissions: PartnerSubmissionRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

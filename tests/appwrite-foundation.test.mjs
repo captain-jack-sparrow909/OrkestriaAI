@@ -29,6 +29,11 @@ test("declares unique Appwrite foundation resources", () => {
       "custom_roles",
       "policy_packs",
       "compliance_exports",
+      "connector_catalog",
+      "connector_installations",
+      "policy_templates",
+      "product_signals",
+      "partner_submissions",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -44,6 +49,11 @@ test("keeps every queried field indexed", () => {
   const customRoles = tables.find((table) => table.id === "custom_roles");
   const policyPacks = tables.find((table) => table.id === "policy_packs");
   const complianceExports = tables.find((table) => table.id === "compliance_exports");
+  const connectorCatalog = tables.find((table) => table.id === "connector_catalog");
+  const connectorInstallations = tables.find((table) => table.id === "connector_installations");
+  const policyTemplates = tables.find((table) => table.id === "policy_templates");
+  const productSignals = tables.find((table) => table.id === "product_signals");
+  const partnerSubmissions = tables.find((table) => table.id === "partner_submissions");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -53,6 +63,11 @@ test("keeps every queried field indexed", () => {
   assert.ok(customRoles.indexes.some((index) => index.key === "workspace_name_unique"));
   assert.ok(policyPacks.indexes.some((index) => index.attributes.includes("workspaceId")));
   assert.ok(complianceExports.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(connectorCatalog.indexes.some((index) => index.key === "slug_unique"));
+  assert.ok(connectorInstallations.indexes.some((index) => index.key === "workspace_connector_unique"));
+  assert.ok(policyTemplates.indexes.some((index) => index.key === "slug_unique"));
+  assert.ok(productSignals.indexes.some((index) => index.attributes.includes("workspaceId")));
+  assert.ok(partnerSubmissions.indexes.some((index) => index.key === "workspace_slug_unique"));
 });
 
 test("enforces approval and execution roles", () => {

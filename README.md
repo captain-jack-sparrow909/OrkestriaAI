@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes fourteen TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes nineteen TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,13 +62,12 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 5 adds the Enterprise Control Center to the five-agent suite. It provides
-durable identity readiness, custom least-privilege roles, regional data
-boundaries, private-network readiness, deterministic policy packs, downloadable
-compliance evidence, and enterprise service targets. All owner changes and
-evidence generation are attributed in the shared audit trail, while external
-SAML, SCIM, and private-network connections remain explicitly unverified until
-their real handshakes complete.
+Phase 6 adds the Ecosystem Exchange to the five-agent suite and Enterprise
+Control Center. It provides a governed connector marketplace, credential-free
+installation drafts, monitor-first vertical policy packs, a bounded partner
+manifest SDK, and durable product-intelligence signals. External authorization
+and marketplace publishing remain separate reviewed actions.
 
-**Next phase:** Ecosystem expansion — connector marketplace, partner SDK,
-vertical policy packs, and continuous product intelligence.
+**Next phase:** Production operations — complete real provider authorization,
+execution workers, usage metering, disaster recovery, load and security
+validation, and pilot onboarding.

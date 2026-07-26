@@ -110,6 +110,11 @@ Recommended additions for the product app:
 | `custom_roles` | Least-privilege role definitions | capabilities, members, status, owner |
 | `policy_packs` | Deterministic governance controls | framework, version, mode, coverage |
 | `compliance_exports` | Point-in-time evidence manifests | framework, period, checksum, requester |
+| `connector_catalog` | Verified integration contracts | auth, capabilities, actions, agents |
+| `connector_installations` | Workspace connector lifecycle | auth status, environment, config, owner |
+| `policy_templates` | Vertical policy marketplace | industry, framework, rules, version |
+| `product_signals` | Continuous product intelligence | evidence, score, recommendation, status |
+| `partner_submissions` | Private connector SDK drafts | manifest, validation, publisher, status |
 | `security_findings` | Aegis findings | fingerprint, severity, CWE, fix, state |
 | `browser_sessions` | Vela sessions | state, domainPolicy, expiresAt |
 | `notifications` | User inbox | userId, type, readAt, entityRef |
@@ -231,6 +236,24 @@ audit trail; model output cannot override deterministic policy.
 
 **Next phase:** Ecosystem expansion — launch the connector marketplace,
 partner SDK, vertical policy packs, and continuous product intelligence.
+
+### Phase 6 — Ecosystem expansion
+
+Launch the connector marketplace, partner SDK, vertical policy catalog, and
+continuous product intelligence.
+
+**Implementation status:** The authenticated Ecosystem Exchange ships with a
+verified connector catalog, workspace-scoped installation drafts, vertical
+policy templates, bounded partner manifests, and evidence-backed product
+signals. Adding a connector stores no credentials and explicitly remains
+`configuration_required` until external authorization succeeds. Vertical
+policies enter in monitor mode. High- and critical-risk partner actions are
+forced through approval, while validation saves a private draft rather than
+publishing it. Every workspace mutation is authorized and audited in Appwrite.
+
+**Next phase:** Production operations — complete real provider authorization,
+durable execution workers, usage metering, recovery drills, load and security
+validation, and pilot onboarding.
 
 ## Success metrics
 

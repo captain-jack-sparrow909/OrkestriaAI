@@ -13,6 +13,11 @@ export const appwriteTables = {
   customRoles: "custom_roles",
   policyPacks: "policy_packs",
   complianceExports: "compliance_exports",
+  connectorCatalog: "connector_catalog",
+  connectorInstallations: "connector_installations",
+  policyTemplates: "policy_templates",
+  productSignals: "product_signals",
+  partnerSubmissions: "partner_submissions",
 } as const;
 
 export type AppwriteServerConfig = {

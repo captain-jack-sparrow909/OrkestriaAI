@@ -17,7 +17,7 @@ export function WorkspaceChrome({
   children,
 }: {
   user: ChatGPTUser;
-  active: "overview" | "vela" | "loom" | "tempo" | "helio" | "aegis" | "enterprise";
+  active: "overview" | "vela" | "loom" | "tempo" | "helio" | "aegis" | "enterprise" | "ecosystem";
   title: string;
   children: ReactNode;
 }) {
@@ -50,6 +50,9 @@ export function WorkspaceChrome({
           <Link className={active === "enterprise" ? "active" : ""} href="/enterprise">
             <i className="enterprise-nav-mark">◇</i><span>Enterprise</span>
           </Link>
+          <Link className={active === "ecosystem" ? "active" : ""} href="/ecosystem">
+            <i className="ecosystem-nav-mark">✦</i><span>Ecosystem</span>
+          </Link>
           <span className="app-nav-label">Agents</span>
           {agents.map((agent) => agent.live ? (
             <Link
@@ -71,7 +74,7 @@ export function WorkspaceChrome({
         </nav>
         <div className="sidebar-bottom">
           <Link href="/enterprise">⌾ <span>Governance</span></Link>
-          <Link href="/products">⚙ <span>Connections</span></Link>
+          <Link href="/ecosystem">⚙ <span>Connections</span></Link>
           <a href="/signout-with-chatgpt?return_to=%2F">↪ <span>Sign out</span></a>
         </div>
       </aside>
@@ -83,7 +86,7 @@ export function WorkspaceChrome({
             <strong>{title}</strong>
           </div>
           <div className="topbar-actions">
-            <span className="phase-live"><i />Phase 5 live</span>
+            <span className="phase-live"><i />Phase 6 live</span>
             <div className="user-chip">
               <span>{initials}</span>
               <p><strong>{user.displayName}</strong><small>Owner</small></p>
