@@ -4,12 +4,12 @@ import { AuthGateway } from "../components/AuthGateway";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Sign in",
-  description: "Continue securely to your OrkestriaAI workspace.",
+  title: "Create account",
+  description: "Create secure access to your OrkestriaAI workspace.",
 };
 
-export default async function SignInPage() {
+export default async function SignUpPage() {
   const user = await getChatGPTUser();
 
-  return <AuthGateway mode="sign-in" user={user} />;
+  return <AuthGateway mode="sign-up" user={user} />;
 }

@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-async function render(path = "/") {
+async function render(path = "/", requestHeaders = {}) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${path}`);
   const { default: worker } = await import(workerUrl.href);
 
   return worker.fetch(
     new Request(`http://localhost${path}`, {
-      headers: { accept: "text/html" },
+      headers: { accept: "text/html", ...requestHeaders },
     }),
     {
       ASSETS: {
@@ -48,6 +48,7 @@ test("renders every primary marketing route", async () => {
     ["/security", /Trust is a product feature\./],
     ["/pricing", /Start small\./],
     ["/sign-in", /Continue to your workspace/],
+    ["/sign-up", /Start orchestrating with confidence/],
   ];
 
   for (const [path, expected] of routes) {
@@ -55,6 +56,31 @@ test("renders every primary marketing route", async () => {
     assert.equal(response.status, 200, `${path} should respond successfully`);
     assert.match(await response.text(), expected);
   }
+});
+
+test("offers working sign-in and account-creation handoffs", async () => {
+  for (const path of ["/sign-in", "/sign-up"]) {
+    const response = await render(path);
+    assert.equal(response.status, 200);
+    const html = await response.text();
+    assert.match(
+      html,
+      /href="\/signin-with-chatgpt\?return_to=%2Fdashboard"/,
+    );
+    assert.match(html, /No separate OrkestriaAI password/);
+    assert.match(html, /Create account/);
+    assert.doesNotMatch(html, /<form\b/i);
+  }
+
+  const authenticated = await render("/sign-in", {
+    "oai-authenticated-user-email": "owner@example.com",
+    "oai-authenticated-user-full-name": "Orkestria%20Owner",
+    "oai-authenticated-user-full-name-encoding": "percent-encoded-utf-8",
+  });
+  const authenticatedHtml = await authenticated.text();
+  assert.match(authenticatedHtml, /Signed in as owner@example\.com/);
+  assert.match(authenticatedHtml, /href="\/dashboard"/);
+  assert.doesNotMatch(authenticatedHtml, /href="\/signin-with-chatgpt/);
 });
 
 test("protects the command center behind authenticated identity", async () => {

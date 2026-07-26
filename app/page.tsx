@@ -128,7 +128,7 @@ export default function Home() {
             operate, optimize, and protect your business.
           </p>
           <div className="hero-actions">
-            <Link className="button button-primary" href="/sign-in">
+            <Link className="button button-primary" href="/sign-up">
               Start orchestrating
               <span aria-hidden="true">↗</span>
             </Link>
@@ -325,7 +325,7 @@ export default function Home() {
           <h2>Give your team<br />room to think bigger.</h2>
           <p>Orkestria handles the operational work. Your people stay in control.</p>
           <div className="hero-actions centered-actions">
-            <Link className="button button-primary" href="/sign-in">Start for free <span>↗</span></Link>
+            <Link className="button button-primary" href="/sign-up">Start for free <span>↗</span></Link>
             <Link className="button button-ghost" href="/pricing">View pricing</Link>
           </div>
         </div>

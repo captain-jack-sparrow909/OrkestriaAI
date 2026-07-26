@@ -154,7 +154,7 @@ export default function ProductsPage() {
           <h2>Build your AI<br />operations team.</h2>
           <p>Every product includes human approvals, shared context, and full auditability.</p>
           <div className="hero-actions centered-actions">
-            <Link className="button button-primary" href="/sign-in">Start for free <span>↗</span></Link>
+            <Link className="button button-primary" href="/sign-up">Start for free <span>↗</span></Link>
             <Link className="button button-ghost" href="/pricing">Compare plans</Link>
           </div>
         </div>

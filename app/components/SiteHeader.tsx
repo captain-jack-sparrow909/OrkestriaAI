@@ -29,7 +29,7 @@ export function SiteHeader() {
         </nav>
         <div className="nav-actions">
           <Link href="/sign-in">Sign in</Link>
-          <Link href="/sign-in" className="button button-nav">
+          <Link href="/sign-up" className="button button-nav">
             Start free <span aria-hidden="true">↗</span>
           </Link>
         </div>
