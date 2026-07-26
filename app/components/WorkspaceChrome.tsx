@@ -18,7 +18,7 @@ export function WorkspaceChrome({
   children,
 }: {
   user: ChatGPTUser;
-  active: "overview" | "vela" | "loom" | "tempo" | "helio" | "aegis" | "enterprise" | "ecosystem" | "operations" | "pilot" | "scale" | "trust" | "cadence" | "ensemble" | "continuum" | "meridian" | "keystone" | "concord" | "verity";
+  active: "overview" | "vela" | "loom" | "tempo" | "helio" | "aegis" | "enterprise" | "ecosystem" | "operations" | "pilot" | "scale" | "trust" | "cadence" | "ensemble" | "continuum" | "meridian" | "keystone" | "concord" | "verity" | "overture";
   title: string;
   children: ReactNode;
 }) {
@@ -87,6 +87,9 @@ export function WorkspaceChrome({
           <Link className={active === "verity" ? "active" : ""} href="/verity">
             <i className="verity-nav-mark">◐</i><span>Verity</span>
           </Link>
+          <Link className={active === "overture" ? "active" : ""} href="/overture">
+            <i className="overture-nav-mark">✺</i><span>Overture</span>
+          </Link>
           <span className="app-nav-label">Agents</span>
           {agents.map((agent) => agent.live ? (
             <Link
@@ -120,7 +123,7 @@ export function WorkspaceChrome({
             <strong>{title}</strong>
           </div>
           <div className="topbar-actions">
-            <span className="phase-live"><i />Phase 17 live</span>
+            <span className="phase-live"><i />Phase 18 live</span>
             <div className="user-chip">
               <span>{initials}</span>
               <p><strong>{user.displayName}</strong><small>Owner</small></p>

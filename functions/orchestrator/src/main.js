@@ -37,6 +37,16 @@ function parseContext(value) {
   }
 }
 
+function parseArray(value) {
+  if (Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(String(value || "[]"));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 function moneyToCents(value) {
   return Math.min(
     1_000_000_000,
@@ -77,7 +87,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "ai_quality_governance",
+      phase: "general_availability_command",
       requestId,
     });
   }
@@ -2340,6 +2350,328 @@ async function orchestrator({ req, res, log, error }) {
         trafficChanged: false,
       });
       return res.json({ run, driftSignals, requestId });
+    }
+
+    if (path === "/ga/preflight" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const programId = String(body.programId || "").slice(0, 36);
+      const gateId = String(body.gateId || "").slice(0, 36);
+      if (!workspaceId || !programId || !gateId) {
+        return res.json(
+          { error: "workspaceId, programId, and gateId are required", requestId },
+          400,
+        );
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json(
+          { error: "GA preflight rehearsals are not allowed for this role", requestId },
+          403,
+        );
+      }
+      const [program, existingLoadTests, existingSecurityReviews, promotions] =
+        await Promise.all([
+        tables.getRow({
+          databaseId: DATABASE_ID,
+          tableId: "ga_readiness_programs",
+          rowId: programId,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "load_test_runs",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "security_review_runs",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "model_promotion_decisions",
+          queries: [Query.equal("workspaceId", [workspaceId]), Query.limit(100)],
+          total: false,
+        }),
+      ]);
+      if (program.workspaceId !== workspaceId || gateId !== programId) {
+        return res.json(
+          { error: "GA readiness records do not share one workspace and program", requestId },
+          409,
+        );
+      }
+      const connectors = parseArray(program.connectorCertifications);
+      const runbooks = parseArray(program.operationalRunbooks);
+      const onboarding = parseArray(program.onboardingChecklists);
+      const startedAt = new Date();
+      const completedAt = new Date();
+      const loadTest = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "load_test_runs",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          programId,
+          status: "synthetic_harness_passed",
+          scenario: "bounded_api_and_page_fixture",
+          virtualUsers: 25,
+          durationSeconds: 60,
+          totalRequests: 1500,
+          errorRateBps: 0,
+          p95LatencyMs: 180,
+          throughputRps: 25,
+          confidenceBps: 3000,
+          decisionGrade: 0,
+          productionTrafficUsed: 0,
+          externalLoadGeneratorUsed: 0,
+          evidence: JSON.stringify({
+            basis: "deterministic_load_fixture",
+            requestsActuallySent: 0,
+            productionEnvironmentTargeted: false,
+            productionTrafficUsed: false,
+            externalLoadGeneratorUsed: false,
+            infrastructureMetricsObserved: false,
+            resilienceFailureInjected: false,
+            productionCapacityClaimed: false,
+          }),
+          createdBy: membership.userEmail,
+          startedAt: startedAt.toISOString(),
+          completedAt: completedAt.toISOString(),
+        },
+        permissions: [],
+      });
+      const securityReview = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "security_review_runs",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          programId,
+          status: "internal_checklist_only",
+          reviewType: "deterministic_control_inventory",
+          areasReviewed: 5,
+          findingsCount: 2,
+          criticalFindings: 0,
+          highFindings: 1,
+          scoreBps: 7000,
+          confidenceBps: 3500,
+          decisionGrade: 0,
+          externalPenTestCompleted: 0,
+          supplyChainVerified: 0,
+          secretsScanVerified: 0,
+          evidence: JSON.stringify({
+            basis: "deterministic_security_fixture",
+            areas: [
+              "authentication_boundary",
+              "approval_boundary",
+              "secret_storage_policy",
+              "audit_attribution",
+              "external_action_truth",
+            ],
+            sourceCodeScanned: false,
+            dependenciesScanned: false,
+            externalTesterUsed: false,
+            penetrationTrafficSent: false,
+            supplyChainAttested: false,
+            secretExposureTested: false,
+            productionSecurityClaimed: false,
+          }),
+          createdBy: membership.userEmail,
+          startedAt: startedAt.toISOString(),
+          completedAt: completedAt.toISOString(),
+        },
+        permissions: [],
+      });
+      const allLoadTests = [...existingLoadTests.rows, loadTest];
+      const allSecurityReviews = [
+        ...existingSecurityReviews.rows,
+        securityReview,
+      ];
+      const evidence = {
+        syntheticPreflightCompleted: true,
+        productionLoadValidated: allLoadTests.some(
+          (run) =>
+            run.status === "production_load_passed" &&
+            Number(run.productionTrafficUsed) === 1 &&
+            Number(run.externalLoadGeneratorUsed) === 1 &&
+            Number(run.decisionGrade) === 1 &&
+            Number(run.confidenceBps) >= 8500,
+        ),
+        externalSecurityValidated: allSecurityReviews.some(
+          (run) =>
+            run.status === "external_review_passed" &&
+            Number(run.externalPenTestCompleted) === 1 &&
+            Number(run.supplyChainVerified) === 1 &&
+            Number(run.secretsScanVerified) === 1 &&
+            Number(run.criticalFindings) === 0 &&
+            Number(run.highFindings) === 0 &&
+            Number(run.decisionGrade) === 1,
+        ),
+        connectorsCertified:
+          connectors.length >= 3 &&
+          connectors.every(
+            (connector) =>
+              connector.status === "certified" &&
+              Number(connector.certified) === 1 &&
+              Number(connector.scopesVerified) === 1 &&
+              Number(connector.liveCallsTested) === 1 &&
+              Number(connector.failureModesTested) === 1 &&
+              Number(connector.rateLimitsVerified) === 1,
+          ),
+        runbooksExercised:
+          runbooks.length >= 3 &&
+          runbooks.every(
+            (runbook) =>
+              runbook.status === "reviewed_exercised" &&
+              Number(runbook.reviewed) === 1 &&
+              Number(runbook.exercisePassed) === 1,
+          ),
+        onboardingVerified:
+          onboarding.length >= 1 &&
+          onboarding.every(
+            (checklist) =>
+              checklist.status === "verified_complete" &&
+              Number(checklist.completedItems) === Number(checklist.totalItems) &&
+              Number(checklist.verifiedItems) === Number(checklist.totalItems) &&
+              Number(checklist.productionCustomerUsed) === 1,
+          ),
+        aiReleaseApproved: promotions.rows.some(
+          (promotion) =>
+            promotion.approvalStatus === "approved" &&
+            Number(promotion.authorized) === 1,
+        ),
+      };
+      const blockerLabels = {
+        productionLoadValidated:
+          "No decision-grade production load and resilience test has passed.",
+        externalSecurityValidated:
+          "External penetration, supply-chain, and secrets assurance is incomplete.",
+        connectorsCertified:
+          "Every production connector requires verified scopes, live calls, failure modes, and rate limits.",
+        runbooksExercised:
+          "Operational runbooks are not all reviewed and successfully exercised.",
+        onboardingVerified:
+          "Production onboarding has not been fully completed and verified.",
+        aiReleaseApproved:
+          "No human-approved AI model and prompt release is available.",
+      };
+      const readinessEntries = Object.entries(evidence).filter(
+        ([key]) => key !== "syntheticPreflightCompleted",
+      );
+      const blockers = readinessEntries
+        .filter(([, ready]) => !ready)
+        .map(([key]) => blockerLabels[key]);
+      const scoreBps = Math.round(
+        (readinessEntries.filter(([, ready]) => ready).length /
+          readinessEntries.length) *
+          10000,
+      );
+      const recommendation = blockers.length === 0 ? "launch" : "hold";
+      const updatedProgram = await tables.updateRow({
+        databaseId: DATABASE_ID,
+        tableId: "ga_readiness_programs",
+        rowId: programId,
+        data: {
+          gateStatus: recommendation === "launch" ? "evidence_ready" : "assessing_hold",
+          recommendation,
+          scoreBps,
+          blockers: JSON.stringify(blockers),
+          evidence: JSON.stringify(evidence),
+          launchAuthorized: 0,
+          publicLaunchPerformed: 0,
+          customerInvitesSent: 0,
+          billingActivated: 0,
+          updatedAt: completedAt.toISOString(),
+        },
+      });
+      const updatedGate = {
+        $id: updatedProgram.$id,
+        workspaceId,
+        programId,
+        status: updatedProgram.gateStatus,
+        recommendation: updatedProgram.recommendation,
+        scoreBps: updatedProgram.scoreBps,
+        blockers: updatedProgram.blockers,
+        evidence: updatedProgram.evidence,
+        launchAuthorized: updatedProgram.launchAuthorized,
+        publicLaunchPerformed: updatedProgram.publicLaunchPerformed,
+        customerInvitesSent: updatedProgram.customerInvitesSent,
+        billingActivated: updatedProgram.billingActivated,
+        updatedBy: membership.userEmail,
+        createdAt: updatedProgram.createdAt,
+        updatedAt: updatedProgram.updatedAt,
+      };
+      await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "ga_preflight_rehearsal",
+            quantity: 2,
+            unit: "bounded_fixture",
+            sourceType: "ga_readiness_program",
+            sourceId: programId,
+            period: completedAt.toISOString().slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `ga-preflight:${loadTest.$id}`,
+            recordedAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "audit_events",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            actorEmail: membership.userEmail,
+            action: "ga.preflight.completed",
+            targetType: "launch_control_gate",
+            targetId: gateId,
+            outcome: "success",
+            metadata: JSON.stringify({
+              scoreBps,
+              recommendation,
+              blockers: blockers.length,
+              productionRequestsSent: 0,
+              productionTrafficUsed: false,
+              externalLoadGeneratorUsed: false,
+              externalPenTestCompleted: false,
+              sourceCodeScanned: false,
+              dependenciesScanned: false,
+              publicLaunchPerformed: false,
+              customerInvitesSent: false,
+              billingActivated: false,
+              requestId,
+            }),
+            occurredAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      audit(log, {
+        requestId,
+        event: "ga.preflight.completed",
+        workspaceId,
+        programId,
+        scoreBps,
+        recommendation,
+        blockers: blockers.length,
+        productionRequestsSent: 0,
+        externalPenTestCompleted: false,
+        publicLaunchPerformed: false,
+        customerInvitesSent: false,
+        billingActivated: false,
+      });
+      return res.json({
+        loadTest,
+        securityReview,
+        gate: updatedGate,
+        requestId,
+      });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

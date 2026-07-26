@@ -31,6 +31,7 @@
     "appwrite:smoke-phase15": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/appwrite/smoke-phase-fifteen.mjs",
     "appwrite:smoke-phase16": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/appwrite/smoke-phase-sixteen.mjs",
     "appwrite:smoke-phase17": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/appwrite/smoke-phase-seventeen.mjs",
+    "appwrite:smoke-phase18": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/appwrite/smoke-phase-eighteen.mjs",
     "appwrite:deploy-site": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/appwrite/deploy-site.mjs",
     "appwrite:check": "node --test tests/appwrite-foundation.test.mjs",
     "deepseek:check": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/deepseek/check.mjs"

@@ -2893,6 +2893,204 @@ button { font: inherit; }
   .concord-rollup-action input { width:100%; }
 }
 
+/* Phase 18 · Overture general availability command */
+.overture-nav-mark { color: #ffc96b !important; text-shadow: 0 0 14px rgba(255, 185, 80, .5); }
+.overture-page {
+  --overture: #ffc66d;
+  --overture-coral: #ff8d76;
+  --overture-violet: #a790ff;
+  padding: 32px;
+  color: #fbf8f3;
+  background:
+    radial-gradient(circle at 84% 3%, rgba(255, 176, 83, .08), transparent 29rem),
+    radial-gradient(circle at 7% 42%, rgba(158, 116, 255, .07), transparent 30rem);
+}
+.overture-hero {
+  min-height: 410px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(310px, .65fr);
+  align-items: center;
+  gap: 50px;
+  padding: 58px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 211, 140, .15);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 80% 50%, rgba(255, 187, 92, .075), transparent 22rem),
+    linear-gradient(135deg, rgba(24, 17, 20, .97), rgba(11, 15, 28, .96));
+  box-shadow: 0 34px 95px rgba(0, 0, 0, .25);
+}
+.overture-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: .25;
+  background-image:
+    radial-gradient(circle at 20% 25%, #fff 0 1px, transparent 1.5px),
+    radial-gradient(circle at 71% 18%, #ffc66d 0 1px, transparent 1.5px),
+    radial-gradient(circle at 85% 72%, #a790ff 0 1px, transparent 1.5px),
+    linear-gradient(115deg, transparent 0 45%, rgba(255, 198, 109, .05) 46%, transparent 47%);
+  background-size: 130px 130px, 180px 180px, 220px 220px, 100% 100%;
+}
+.overture-hero-copy { position: relative; z-index: 1; }
+.overture-eyebrow, .overture-panel > header span, .overture-form > span,
+.overture-launch-form > div span, .overture-decision-head span {
+  display: block;
+  color: var(--overture);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+}
+.overture-hero h1 {
+  max-width: 760px;
+  margin: 18px 0 20px;
+  font-size: clamp(46px, 5.2vw, 76px);
+  line-height: .98;
+  letter-spacing: -.058em;
+}
+.overture-hero h1 em { color: var(--overture); font-style: normal; }
+.overture-hero p { max-width: 720px; color: #b5adba; font-size: 16px; line-height: 1.75; }
+.overture-truth { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+.overture-truth span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  color: #d8ced2;
+  font-size: 11px;
+  border: 1px solid rgba(255, 198, 109, .16);
+  border-radius: 999px;
+  background: rgba(255, 198, 109, .045);
+}
+.overture-truth i { width: 6px; height: 6px; border-radius: 50%; background: var(--overture); box-shadow: 0 0 10px var(--overture); }
+.overture-score { display: grid; justify-items: center; gap: 9px; position: relative; z-index: 1; }
+.overture-score-ring {
+  --score: 0%;
+  width: 245px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(var(--overture) var(--score), rgba(255,255,255,.07) 0);
+  box-shadow: 0 0 55px rgba(255, 177, 72, .12);
+  position: relative;
+}
+.overture-score-ring::before { content: ""; position: absolute; inset: 10px; border-radius: 50%; background: #11131f; border: 1px solid rgba(255,255,255,.06); }
+.overture-score-ring::after { content: ""; position: absolute; inset: 30px; border: 1px dashed rgba(255, 198, 109, .2); border-radius: 50%; animation: overtureSpin 22s linear infinite; }
+.overture-score-ring > div { position: relative; z-index: 1; text-align: center; }
+.overture-score-ring strong { display: block; font-size: 43px; letter-spacing: -.06em; }
+.overture-score-ring span { color: #807787; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; }
+.overture-score > b { margin-top: 8px; padding: 7px 11px; border-radius: 999px; color: #ffc2a5; background: rgba(177, 76, 50, .15); font-size: 9px; text-transform: uppercase; letter-spacing: .1em; }
+.overture-score > b.ready { color: #8ff2ca; background: rgba(54, 170, 126, .14); }
+.overture-score > small { color: #746d7b; font-size: 10px; }
+@keyframes overtureSpin { to { transform: rotate(360deg); } }
+.overture-message { margin-top: 18px; padding: 14px 18px; border: 1px solid rgba(255, 141, 118, .25); border-radius: 12px; color: #ffc5b9; background: rgba(112, 45, 43, .14); }
+.overture-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 18px 0; }
+.overture-stat-grid article { padding: 20px; border: 1px solid rgba(202, 176, 169, .12); border-radius: 16px; background: rgba(19, 17, 28, .8); }
+.overture-stat-grid span, .overture-stat-grid small { display: block; color: #827985; font-size: 10px; }
+.overture-stat-grid strong { display: block; margin: 8px 0 5px; font-size: 23px; letter-spacing: -.035em; }
+.overture-panel { margin-top: 18px; padding: 30px; border: 1px solid rgba(202, 176, 169, .12); border-radius: 22px; background: linear-gradient(145deg, rgba(20, 17, 28, .95), rgba(10, 14, 25, .92)); }
+.overture-panel > header { display: flex; justify-content: space-between; align-items: end; gap: 28px; margin-bottom: 25px; }
+.overture-panel > header h2 { margin-top: 7px; font-size: 27px; letter-spacing: -.035em; }
+.overture-panel > header p { max-width: 560px; color: #827a89; font-size: 11px; line-height: 1.6; text-align: right; }
+.overture-panel > header button, .overture-form button, .overture-launch-form button, .overture-actions button {
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 9px;
+  color: #241507;
+  background: linear-gradient(135deg, #ffd68f, #f6aa4f);
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.overture-panel button:disabled { opacity: .42; cursor: not-allowed; }
+.overture-evidence-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.overture-evidence-grid article {
+  display: grid;
+  grid-template-columns: 38px 1fr auto;
+  gap: 11px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid rgba(202, 176, 169, .1);
+  border-radius: 13px;
+  background: rgba(7, 10, 19, .48);
+}
+.overture-evidence-grid article > span { color: var(--overture); font-family: monospace; font-size: 11px; }
+.overture-evidence-grid strong, .overture-evidence-grid small { display: block; }
+.overture-evidence-grid strong { font-size: 12px; }.overture-evidence-grid small { margin-top: 4px; color: #746c7b; font-size: 9px; line-height: 1.4; }
+.overture-evidence-grid b { padding: 5px 7px; border-radius: 999px; color: #f3a385; background: rgba(161, 64, 44, .13); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.overture-evidence-grid .pass { border-color: rgba(103, 231, 180, .16); }.overture-evidence-grid .pass b { color: #83eec4; background: rgba(50, 168, 124, .13); }
+.overture-preflight-note { margin: 15px 0 0; color: #706977; font-size: 9px; line-height: 1.5; text-align: center; }
+.overture-split { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.overture-split .overture-panel { min-width: 0; }
+.overture-proof-card > header { margin-bottom: 18px; }
+.overture-proof-head { display: flex; justify-content: space-between; gap: 20px; align-items: start; }
+.overture-proof-head span, .overture-proof-head strong { display: block; }.overture-proof-head span { color: #7c7381; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }.overture-proof-head strong { margin-top: 7px; font-size: 14px; }
+.overture-proof-head > b { color: #f1ad83; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.overture-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 18px 0; }
+.overture-metrics div { padding: 12px; border: 1px solid rgba(202, 176, 169, .08); border-radius: 10px; background: rgba(255,255,255,.018); }
+.overture-metrics strong, .overture-metrics span { display: block; }.overture-metrics strong { font-size: 17px; }.overture-metrics span { margin-top: 4px; color: #736b79; font-size: 8px; }
+.overture-proof-truth { display: flex; flex-wrap: wrap; gap: 7px; }
+.overture-proof-truth span { display: flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid rgba(202, 176, 169, .09); border-radius: 999px; color: #766d7b; font-size: 8px; }
+.overture-proof-truth i { width: 6px; height: 6px; border-radius: 50%; background: #763f39; }.overture-proof-truth .pass i { background: #69d7ad; box-shadow: 0 0 8px #69d7ad; }
+.overture-connector-layout, .overture-runbook-layout, .overture-onboarding-layout { display: grid; grid-template-columns: 1.25fr .75fr; gap: 16px; }
+.overture-connectors, .overture-runbooks, .overture-onboarding-list { display: grid; gap: 10px; align-content: start; }
+.overture-connectors article { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; padding: 15px; border: 1px solid rgba(202, 176, 169, .1); border-radius: 13px; background: rgba(7, 10, 19, .48); }
+.overture-connector-mark { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid rgba(255, 198, 109, .2); border-radius: 11px; color: var(--overture); font-size: 10px; font-weight: 850; }
+.overture-connectors strong, .overture-connectors small { display: block; }.overture-connectors strong { font-size: 13px; }.overture-connectors small { margin-top: 4px; color: #766e7d; font-size: 9px; }
+.overture-connectors b { color: #b7aab2; font-size: 8px; text-transform: uppercase; letter-spacing: .07em; }
+.overture-connectors article > span { grid-column: 2 / -1; height: 4px; overflow: hidden; border-radius: 99px; background: #24202a; }.overture-connectors article > span i { display: block; height: 100%; background: linear-gradient(90deg, var(--overture-coral), var(--overture)); }
+.overture-form { display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid rgba(255, 198, 109, .12); border-radius: 15px; background: rgba(10, 12, 22, .65); }
+.overture-form label, .overture-rationale, .overture-launch-form label { display: grid; gap: 6px; color: #837985; font-size: 9px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; }
+.overture-form input, .overture-form textarea, .overture-rationale textarea, .overture-launch-form input, .overture-launch-form textarea {
+  width: 100%; padding: 11px 12px; border: 1px solid rgba(202, 176, 169, .14); border-radius: 9px; color: #f6eef0; background: #0e111d; font: inherit; font-size: 11px; text-transform: none; letter-spacing: normal; resize: vertical;
+}
+.overture-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.overture-runbooks article { display: grid; grid-template-columns: 38px 1fr auto; gap: 11px; align-items: center; padding: 15px; border: 1px solid rgba(202, 176, 169, .1); border-radius: 13px; background: rgba(7, 10, 19, .48); }
+.overture-runbooks article > span { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; color: var(--overture); background: rgba(255, 198, 109, .07); font-size: 10px; }
+.overture-runbooks strong, .overture-runbooks small { display: block; }.overture-runbooks strong { font-size: 12px; }.overture-runbooks small { margin-top: 4px; color: #756d7a; font-size: 9px; }
+.overture-runbooks b { color: #ab9eaa; font-size: 8px; text-transform: uppercase; letter-spacing: .07em; }
+.overture-runbook-flags { grid-column: 2 / -1; display: flex; gap: 7px; }.overture-runbook-flags i { padding: 5px 7px; border-radius: 99px; color: #846f75; background: rgba(140, 76, 63, .11); font-size: 8px; font-style: normal; }.overture-runbook-flags i.pass { color: #72d7ae; background: rgba(45, 151, 110, .11); }
+.overture-onboarding-list article { padding: 17px; border: 1px solid rgba(202, 176, 169, .1); border-radius: 13px; background: rgba(7, 10, 19, .48); }
+.overture-onboarding-list header { display: flex; justify-content: space-between; }.overture-onboarding-list header strong, .overture-onboarding-list header small { display: block; }.overture-onboarding-list header strong { font-size: 13px; }.overture-onboarding-list header small { margin-top: 4px; color: #766e7c; font-size: 9px; }.overture-onboarding-list header b { color: var(--overture); font-size: 13px; }
+.overture-onboarding-list article > div { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin: 14px 0; }
+.overture-onboarding-list article > div span { display: flex; gap: 7px; align-items: center; color: #766e7c; font-size: 9px; }.overture-onboarding-list article > div i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #3d3036; }.overture-onboarding-list article > div .complete i { background: #bc8653; }.overture-onboarding-list article > div .verified i { background: #70dbb1; box-shadow: 0 0 7px #70dbb1; }
+.overture-onboarding-list article > small { color: #665f6c; font-size: 8px; }
+.overture-decision { padding: 22px; border: 1px solid rgba(255, 198, 109, .16); border-radius: 16px; background: linear-gradient(135deg, rgba(49, 30, 21, .38), rgba(11, 14, 25, .7)); }
+.overture-decision-head { display: flex; justify-content: space-between; gap: 25px; }.overture-decision-head h3 { margin: 7px 0; font-size: 22px; }.overture-decision-head p { max-width: 720px; color: #827987; font-size: 11px; line-height: 1.5; }
+.overture-decision-head > b { align-self: start; padding: 7px 10px; border-radius: 999px; color: #ffc0a3; background: rgba(172, 72, 48, .14); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }.overture-decision-head > b.ready { color: #80e7bc; background: rgba(49, 161, 116, .13); }
+.overture-blockers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 20px 0; }.overture-blockers span { display: flex; gap: 8px; align-items: center; padding: 10px; border: 1px solid rgba(202, 176, 169, .09); border-radius: 9px; color: #877986; font-size: 9px; line-height: 1.4; }.overture-blockers i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #8a453b; }.overture-blockers .pass i { background: #72ddb3; }
+.overture-actions { display: flex; gap: 10px; margin-top: 12px; }.overture-actions .secondary { color: #e8dfe3; border: 1px solid rgba(202, 176, 169, .15); background: #171823; }
+.overture-decision > small { display: block; margin-top: 12px; color: #6f6875; font-size: 8px; }
+.overture-launch-form { display: grid; grid-template-columns: .7fr 1fr 1.4fr auto; gap: 13px; align-items: end; padding: 20px; border: 1px solid rgba(255, 198, 109, .12); border-radius: 15px; background: rgba(10, 12, 22, .65); }
+.overture-launch-form > div strong, .overture-launch-form > div small { display: block; }.overture-launch-form > div strong { margin-top: 8px; }.overture-launch-form > div small { margin-top: 5px; color: #746b78; font-size: 8px; }
+.overture-empty { padding: 28px; color: #7c7380; text-align: center; border: 1px dashed rgba(202, 176, 169, .13); border-radius: 13px; font-size: 10px; }
+.overture-loading { min-height: 500px; display: grid; place-content: center; gap: 9px; text-align: center; color: #eee5e8; }.overture-loading > span { color: #ffc66d; font-size: 38px; }.overture-loading p { color: #766e7c; font-size: 11px; }.overture-loading.error > span { color: #ff8d76; }
+@media (max-width: 1120px) {
+  .overture-page { padding: 22px; }
+  .overture-hero { grid-template-columns: 1fr; }
+  .overture-score { display: none; }
+  .overture-stat-grid { grid-template-columns: 1fr 1fr; }
+  .overture-evidence-grid { grid-template-columns: 1fr 1fr; }
+  .overture-split, .overture-connector-layout, .overture-runbook-layout, .overture-onboarding-layout { grid-template-columns: 1fr; }
+  .overture-launch-form { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 720px) {
+  .overture-page { padding: 14px; }
+  .overture-hero { min-height: 0; padding: 34px 24px; }
+  .overture-hero h1 { font-size: 43px; }
+  .overture-panel { padding: 20px; }
+  .overture-panel > header { display: block; }
+  .overture-panel > header p { margin-top: 10px; text-align: left; }
+  .overture-panel > header button { margin-top: 14px; width: 100%; }
+  .overture-stat-grid, .overture-evidence-grid, .overture-metrics, .overture-onboarding-list article > div, .overture-blockers, .overture-launch-form { grid-template-columns: 1fr; }
+  .overture-form-row { grid-template-columns: 1fr; }
+  .overture-decision-head { display: block; }.overture-decision-head > b { display: inline-block; margin-top: 12px; }
+  .overture-actions { flex-direction: column; }
+}
+
 /* Phase 17 · Verity AI quality governance */
 .verity-nav-mark { color: #8df4d2 !important; text-shadow: 0 0 14px rgba(78, 239, 193, .48); }
 .verity-page {

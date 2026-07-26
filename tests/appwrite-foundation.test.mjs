@@ -107,6 +107,9 @@ test("declares unique Appwrite foundation resources", () => {
       "model_drift_signals",
       "model_routing_policies",
       "model_promotion_decisions",
+      "ga_readiness_programs",
+      "load_test_runs",
+      "security_review_runs",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -200,6 +203,9 @@ test("keeps every queried field indexed", () => {
   const modelDriftSignals = tables.find((table) => table.id === "model_drift_signals");
   const modelRoutingPolicies = tables.find((table) => table.id === "model_routing_policies");
   const modelPromotionDecisions = tables.find((table) => table.id === "model_promotion_decisions");
+  const gaReadinessPrograms = tables.find((table) => table.id === "ga_readiness_programs");
+  const loadTestRuns = tables.find((table) => table.id === "load_test_runs");
+  const securityReviewRuns = tables.find((table) => table.id === "security_review_runs");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -287,6 +293,13 @@ test("keeps every queried field indexed", () => {
   assert.ok(modelDriftSignals.indexes.some((index) => index.key === "run_dimension_unique"));
   assert.ok(modelRoutingPolicies.indexes.some((index) => index.key === "workspace_capability_name_unique"));
   assert.ok(modelPromotionDecisions.indexes.some((index) => index.attributes.includes("approvalStatus")));
+  assert.ok(gaReadinessPrograms.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(gaReadinessPrograms.columns.some((column) => column.key === "connectorCertifications"));
+  assert.ok(gaReadinessPrograms.columns.some((column) => column.key === "operationalRunbooks"));
+  assert.ok(gaReadinessPrograms.columns.some((column) => column.key === "onboardingChecklists"));
+  assert.ok(gaReadinessPrograms.columns.some((column) => column.key === "decisionStatus"));
+  assert.ok(loadTestRuns.indexes.some((index) => index.attributes.includes("completedAt")));
+  assert.ok(securityReviewRuns.indexes.some((index) => index.attributes.includes("completedAt")));
 });
 
 test("enforces approval and execution roles", () => {

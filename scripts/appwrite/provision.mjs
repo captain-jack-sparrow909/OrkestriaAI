@@ -21,11 +21,13 @@ async function request(path, body, method = "POST") {
   const response = await fetch(`${endpoint.replace(/\/$/, "")}${path}`, {
     method,
     headers,
-    body: JSON.stringify(body),
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
 
   if (response.ok) {
-    return { state: "created", resource: await response.json() };
+    const resource =
+      response.status === 204 ? null : await response.json();
+    return { state: "created", resource };
   }
 
   const error = await response.json().catch(() => ({}));
@@ -36,6 +38,59 @@ async function request(path, body, method = "POST") {
   throw new Error(
     `${response.status} ${path}: ${error.message ?? "Appwrite request failed"}`,
   );
+}
+
+const wait = (milliseconds) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+async function reconcileColumns(table) {
+  const tablePath = `/tablesdb/${databaseId}/tables/${table.id}`;
+  const current = await request(tablePath, undefined, "GET");
+  const existing = new Map(
+    (current.resource?.columns || []).map((column) => [
+      column.key,
+      column.status,
+    ]),
+  );
+  let created = 0;
+
+  for (const column of table.columns) {
+    if (!existing.has(column.key)) {
+      const body = {
+        key: column.key,
+        required: column.required,
+        array: false,
+        ...(column.size === undefined ? {} : { size: column.size }),
+        ...(column.default === undefined ? {} : { default: column.default }),
+        ...(column.type === "string" ? { encrypt: false } : {}),
+      };
+      await request(`${tablePath}/columns/${column.type}`, body);
+      created += 1;
+    }
+    if (existing.get(column.key) !== "available") {
+      for (let attempt = 0; attempt < 1200; attempt += 1) {
+        const status = await request(
+          `${tablePath}/columns/${column.key}`,
+          undefined,
+          "GET",
+        );
+        if (status.resource?.status === "available") break;
+        if (status.resource?.status === "failed") {
+          throw new Error(
+            `Column ${table.id}.${column.key} failed to provision.`,
+          );
+        }
+        if (attempt === 1199) {
+          throw new Error(
+            `Column ${table.id}.${column.key} did not become available.`,
+          );
+        }
+        await wait(500);
+      }
+    }
+  }
+
+  return created;
 }
 
 async function upsertVariable(variableId, key, value, secret) {
@@ -101,18 +156,29 @@ results.push([
 ]);
 
 for (const table of tables) {
+  const tableResult = await request(`/tablesdb/${databaseId}/tables`, {
+    tableId: table.id,
+    name: table.name,
+    permissions: [],
+    rowSecurity: table.rowSecurity,
+    enabled: true,
+    columns: table.columns,
+    indexes: table.indexes,
+  });
+  if (
+    tableResult.state === "existing" &&
+    table.id === "ga_readiness_programs"
+  ) {
+    const addedColumns = await reconcileColumns(table);
+    if (addedColumns > 0) {
+      tableResult.state = "updated";
+      tableResult.addedColumns = addedColumns;
+    }
+  }
   results.push([
     "table",
     table.id,
-    await request(`/tablesdb/${databaseId}/tables`, {
-      tableId: table.id,
-      name: table.name,
-      permissions: [],
-      rowSecurity: table.rowSecurity,
-      enabled: true,
-      columns: table.columns,
-      indexes: table.indexes,
-    }),
+    tableResult,
   ]);
 }
 

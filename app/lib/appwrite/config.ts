@@ -91,6 +91,9 @@ export const appwriteTables = {
   modelDriftSignals: "model_drift_signals",
   modelRoutingPolicies: "model_routing_policies",
   modelPromotionDecisions: "model_promotion_decisions",
+  gaReadinessPrograms: "ga_readiness_programs",
+  loadTestRuns: "load_test_runs",
+  securityReviewRuns: "security_review_runs",
 } as const;
 
 export type AppwriteServerConfig = {

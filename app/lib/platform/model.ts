@@ -1597,6 +1597,194 @@ export type VerityOverview = {
   promotions: ModelPromotionDecisionRecord[];
 };
 
+export type GaReadinessProgramRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  status: string;
+  scope: string;
+  startDate: string;
+  targetDate: string;
+  ownerEmail: string;
+  verified: number;
+  productionLaunchAuthorized: number;
+  connectorCertifications: string;
+  operationalRunbooks: string;
+  onboardingChecklists: string;
+  gateStatus: string;
+  recommendation: string;
+  scoreBps: number;
+  blockers: string;
+  evidence: string;
+  launchAuthorized: number;
+  publicLaunchPerformed: number;
+  customerInvitesSent: number;
+  billingActivated: number;
+  decisionTitle: string;
+  decisionStatus: string;
+  decision: string;
+  decisionRationale: string;
+  approvalStatus: string;
+  decisionAuthorized: number;
+  externalSystemsChanged: number;
+  requestedBy?: string;
+  decidedBy?: string;
+  requestedAt?: string;
+  decidedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LoadTestRunRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  status: string;
+  scenario: string;
+  virtualUsers: number;
+  durationSeconds: number;
+  totalRequests: number;
+  errorRateBps: number;
+  p95LatencyMs: number;
+  throughputRps: number;
+  confidenceBps: number;
+  decisionGrade: number;
+  productionTrafficUsed: number;
+  externalLoadGeneratorUsed: number;
+  evidence: string;
+  createdBy: string;
+  startedAt: string;
+  completedAt: string;
+};
+
+export type SecurityReviewRunRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  status: string;
+  reviewType: string;
+  areasReviewed: number;
+  findingsCount: number;
+  criticalFindings: number;
+  highFindings: number;
+  scoreBps: number;
+  confidenceBps: number;
+  decisionGrade: number;
+  externalPenTestCompleted: number;
+  supplyChainVerified: number;
+  secretsScanVerified: number;
+  evidence: string;
+  createdBy: string;
+  startedAt: string;
+  completedAt: string;
+};
+
+export type ConnectorCertificationRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  connectorKey: string;
+  displayName: string;
+  status: string;
+  capabilities: string;
+  scopesVerified: number;
+  liveCallsTested: number;
+  failureModesTested: number;
+  rateLimitsVerified: number;
+  certified: number;
+  externalApproval: number;
+  evidence: string;
+  proposedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OperationalRunbookRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  runbookKey: string;
+  name: string;
+  category: string;
+  status: string;
+  version: number;
+  content: string;
+  ownerEmail: string;
+  reviewed: number;
+  exercisePassed: number;
+  lastExercisedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OnboardingChecklistRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  name: string;
+  status: string;
+  audience: string;
+  totalItems: number;
+  completedItems: number;
+  verifiedItems: number;
+  productionCustomerUsed: number;
+  items: string;
+  ownerEmail: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LaunchControlGateRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  status: string;
+  recommendation: string;
+  scoreBps: number;
+  blockers: string;
+  evidence: string;
+  launchAuthorized: number;
+  publicLaunchPerformed: number;
+  customerInvitesSent: number;
+  billingActivated: number;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type GaLaunchDecisionRecord = {
+  $id: string;
+  workspaceId: string;
+  programId: string;
+  gateId: string;
+  title: string;
+  status: string;
+  decision: string;
+  rationale: string;
+  approvalStatus: string;
+  authorized: number;
+  publicLaunchPerformed: number;
+  customerInvitesSent: number;
+  billingActivated: number;
+  externalSystemsChanged: number;
+  requestedBy: string;
+  decidedBy?: string;
+  createdAt: string;
+  decidedAt?: string;
+};
+
+export type OvertureOverview = {
+  workspaceId: string;
+  program: GaReadinessProgramRecord;
+  loadTests: LoadTestRunRecord[];
+  securityReviews: SecurityReviewRunRecord[];
+  connectors: ConnectorCertificationRecord[];
+  runbooks: OperationalRunbookRecord[];
+  onboarding: OnboardingChecklistRecord[];
+  gate: LaunchControlGateRecord;
+  decisions: GaLaunchDecisionRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

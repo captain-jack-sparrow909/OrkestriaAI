@@ -102,6 +102,15 @@ import {
   type ModelRoutingPolicyRecord,
   type ModelPromotionDecisionRecord,
   type VerityOverview,
+  type GaReadinessProgramRecord,
+  type LoadTestRunRecord,
+  type SecurityReviewRunRecord,
+  type ConnectorCertificationRecord,
+  type OperationalRunbookRecord,
+  type OnboardingChecklistRecord,
+  type LaunchControlGateRecord,
+  type GaLaunchDecisionRecord,
+  type OvertureOverview,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -8228,6 +8237,831 @@ export async function recordModelPromotionDecision(input: {
       blockers: blockers.length,
       promotionApplied: false,
       trafficChanged: false,
+      externalSystemsChanged: false,
+    },
+  });
+  return updated;
+}
+
+function gaProgramRowId(workspaceId: string) {
+  return enterpriseRowId("ga_program", workspaceId);
+}
+
+function launchGateRowId(workspaceId: string) {
+  return gaProgramRowId(workspaceId);
+}
+
+async function ensureOvertureFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureVerityFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const targetDate = new Date(now.valueOf() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const programId = gaProgramRowId(workspace.workspaceId);
+  const connectors: ConnectorCertificationRecord[] = [
+    {
+      $id: enterpriseRowId("ga_appwrite", workspace.workspaceId),
+      workspaceId: workspace.workspaceId,
+      programId,
+      connectorKey: "appwrite",
+      displayName: "Appwrite platform",
+      status: "candidate_unverified",
+      capabilities: JSON.stringify(["identity", "tables", "storage", "functions", "sites"]),
+      scopesVerified: 0,
+      liveCallsTested: 0,
+      failureModesTested: 0,
+      rateLimitsVerified: 0,
+      certified: 0,
+      externalApproval: 0,
+      evidence: JSON.stringify({
+        configurationRecordExists: true,
+        productionCertificationCompleted: false,
+        credentialStoredInRecord: false,
+      }),
+      proposedBy: email.toLowerCase(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+    {
+      $id: enterpriseRowId("ga_deepseek", workspace.workspaceId),
+      workspaceId: workspace.workspaceId,
+      programId,
+      connectorKey: "deepseek",
+      displayName: "DeepSeek model provider",
+      status: "candidate_unverified",
+      capabilities: JSON.stringify(["agent_planning", "bounded_analysis"]),
+      scopesVerified: 0,
+      liveCallsTested: 0,
+      failureModesTested: 0,
+      rateLimitsVerified: 0,
+      certified: 0,
+      externalApproval: 0,
+      evidence: JSON.stringify({
+        configurationRecordExists: true,
+        productionCertificationCompleted: false,
+        credentialStoredInRecord: false,
+      }),
+      proposedBy: email.toLowerCase(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+    {
+      $id: enterpriseRowId("ga_github", workspace.workspaceId),
+      workspaceId: workspace.workspaceId,
+      programId,
+      connectorKey: "github",
+      displayName: "GitHub delivery source",
+      status: "candidate_unverified",
+      capabilities: JSON.stringify(["source_sync", "deployment_trigger"]),
+      scopesVerified: 0,
+      liveCallsTested: 0,
+      failureModesTested: 0,
+      rateLimitsVerified: 0,
+      certified: 0,
+      externalApproval: 0,
+      evidence: JSON.stringify({
+        configurationRecordExists: true,
+        productionCertificationCompleted: false,
+        credentialStoredInRecord: false,
+      }),
+      proposedBy: email.toLowerCase(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+  ];
+  const runbooks: OperationalRunbookRecord[] = [
+    ["incident", "Critical incident command", "incident_response",
+      "Declare severity, preserve evidence, appoint incident command, communicate status, require approval for consequential remediation, and record resolution."],
+    ["rollback", "Application rollback", "release_recovery",
+      "Identify the last verified release, freeze new changes, approve rollback, observe health, and preserve deployment evidence."],
+    ["restore", "Data restore rehearsal", "data_recovery",
+      "Select a verified backup, restore into an isolated target, validate integrity, document recovery objectives, and never overwrite production during rehearsal."],
+  ].map(([runbookKey, name, category, content]) => ({
+    $id: enterpriseRowId(`ga_${runbookKey}`, workspace.workspaceId),
+    workspaceId: workspace.workspaceId,
+    programId,
+    runbookKey,
+    name,
+    category,
+    status: "draft_unexercised",
+    version: 1,
+    content,
+    ownerEmail: email.toLowerCase(),
+    reviewed: 0,
+    exercisePassed: 0,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  }));
+  const onboarding: OnboardingChecklistRecord[] = [
+    {
+      $id: enterpriseRowId("ga_onboarding", workspace.workspaceId),
+      workspaceId: workspace.workspaceId,
+      programId,
+      name: "Enterprise workspace onboarding",
+      status: "draft_fixture_only",
+      audience: "enterprise_workspace_owner",
+      totalItems: 6,
+      completedItems: 2,
+      verifiedItems: 0,
+      productionCustomerUsed: 0,
+      items: JSON.stringify([
+        { title: "Create authenticated workspace", completed: true, verified: false },
+        { title: "Assign owner and approver roles", completed: true, verified: false },
+        { title: "Review approval boundaries", completed: false, verified: false },
+        { title: "Connect least-privilege providers", completed: false, verified: false },
+        { title: "Run first governed workflow", completed: false, verified: false },
+        { title: "Complete launch support handoff", completed: false, verified: false },
+      ]),
+      ownerEmail: email.toLowerCase(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+  ];
+  await createIfMissing(appwrite, `${base}/${appwriteTables.gaReadinessPrograms}/rows`, {
+    rowId: programId,
+    data: {
+      workspaceId: workspace.workspaceId,
+      name: "OrkestriaAI general availability readiness",
+      status: "internal_pre_ga",
+      scope:
+        "Resilience, security, connector certification, operations, onboarding, and human launch governance.",
+      startDate: nowIso,
+      targetDate,
+      ownerEmail: email.toLowerCase(),
+      verified: 0,
+      productionLaunchAuthorized: 0,
+      connectorCertifications: JSON.stringify(connectors),
+      operationalRunbooks: JSON.stringify(runbooks),
+      onboardingChecklists: JSON.stringify(onboarding),
+      gateStatus: "assessing_hold",
+      recommendation: "hold",
+      scoreBps: 0,
+      blockers: JSON.stringify([
+        "No production-grade preflight evidence has been assessed.",
+      ]),
+      evidence: JSON.stringify({
+        syntheticPreflightCompleted: false,
+        productionLoadValidated: false,
+        externalSecurityValidated: false,
+        connectorsCertified: false,
+        runbooksExercised: false,
+        onboardingVerified: false,
+        aiReleaseApproved: false,
+      }),
+      launchAuthorized: 0,
+      publicLaunchPerformed: 0,
+      customerInvitesSent: 0,
+      billingActivated: 0,
+      decisionTitle: "",
+      decisionStatus: "not_requested",
+      decision: "none",
+      decisionRationale: "",
+      approvalStatus: "not_requested",
+      decisionAuthorized: 0,
+      externalSystemsChanged: 0,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    },
+    permissions: [],
+  });
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 18,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+            continuousTrust: true,
+            adaptiveAutonomy: true,
+            collaborativeDecisioning: true,
+            organizationalMemory: true,
+            operationalTwin: true,
+            strategicPlanning: true,
+            portfolioIntelligence: true,
+            governedExecution: true,
+            benefitsRealization: true,
+            federatedEnterpriseCommand: true,
+            privacySafeBenchmarking: true,
+            modelOps: true,
+            aiQualityGovernance: true,
+            generalAvailabilityCommand: true,
+            gaLaunchAuthorized: false,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+export async function getOvertureOverview(
+  email: string,
+  displayName: string,
+): Promise<OvertureOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureOvertureFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view GA launch command.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const recentRows = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.orderDesc("completedAt"),
+    query.limit(100),
+  ];
+  const [program, loadTests, securityReviews] =
+    await Promise.all([
+      appwrite.client.request<GaReadinessProgramRecord>(
+        `${base}/${appwriteTables.gaReadinessPrograms}/rows/${gaProgramRowId(workspace.workspaceId)}`,
+      ),
+      appwrite.client.request<RowList<LoadTestRunRecord>>(
+        `${base}/${appwriteTables.loadTestRuns}/rows`,
+        { queries: recentRows },
+      ),
+      appwrite.client.request<RowList<SecurityReviewRunRecord>>(
+        `${base}/${appwriteTables.securityReviewRuns}/rows`,
+        { queries: recentRows },
+      ),
+    ]);
+  const embedded = <T,>(value: string): T[] => {
+    try {
+      const parsed = JSON.parse(value || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  };
+  const gate: LaunchControlGateRecord = {
+    $id: program.$id,
+    workspaceId: program.workspaceId,
+    programId: program.$id,
+    status: program.gateStatus,
+    recommendation: program.recommendation,
+    scoreBps: program.scoreBps,
+    blockers: program.blockers,
+    evidence: program.evidence,
+    launchAuthorized: program.launchAuthorized,
+    publicLaunchPerformed: program.publicLaunchPerformed,
+    customerInvitesSent: program.customerInvitesSent,
+    billingActivated: program.billingActivated,
+    updatedBy: program.decidedBy || program.requestedBy || program.ownerEmail,
+    createdAt: program.createdAt,
+    updatedAt: program.updatedAt,
+  };
+  const decisions: GaLaunchDecisionRecord[] =
+    program.approvalStatus === "not_requested"
+      ? []
+      : [
+          {
+            $id: program.$id,
+            workspaceId: program.workspaceId,
+            programId: program.$id,
+            gateId: program.$id,
+            title: program.decisionTitle || "OrkestriaAI general availability decision",
+            status: program.decisionStatus,
+            decision: program.decision,
+            rationale: program.decisionRationale,
+            approvalStatus: program.approvalStatus,
+            authorized: program.decisionAuthorized,
+            publicLaunchPerformed: program.publicLaunchPerformed,
+            customerInvitesSent: program.customerInvitesSent,
+            billingActivated: program.billingActivated,
+            externalSystemsChanged: program.externalSystemsChanged,
+            requestedBy: program.requestedBy || program.ownerEmail,
+            decidedBy: program.decidedBy,
+            createdAt: program.requestedAt || program.createdAt,
+            decidedAt: program.decidedAt,
+          },
+        ];
+  return {
+    workspaceId: workspace.workspaceId,
+    program,
+    loadTests: loadTests.rows,
+    securityReviews: securityReviews.rows,
+    connectors: embedded<ConnectorCertificationRecord>(program.connectorCertifications),
+    runbooks: embedded<OperationalRunbookRecord>(program.operationalRunbooks),
+    onboarding: embedded<OnboardingChecklistRecord>(program.onboardingChecklists),
+    gate,
+    decisions,
+  };
+}
+
+export async function runGaPreflight(input: {
+  workspaceId: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureOvertureFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("GA readiness workspace identity mismatch.");
+  }
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${process.env.APPWRITE_FUNCTION_ID || "orchestrator"}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          programId: gaProgramRowId(input.workspaceId),
+          gateId: launchGateRowId(input.workspaceId),
+        }),
+        async: false,
+        path: "/ga/preflight",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    loadTest?: LoadTestRunRecord;
+    securityReview?: SecurityReviewRunRecord;
+    gate?: LaunchControlGateRecord;
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("GA preflight returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.loadTest ||
+    !response.securityReview ||
+    !response.gate
+  ) {
+    throw new Error(response?.error || execution.errors || "GA preflight failed.");
+  }
+  return response;
+}
+
+export async function proposeConnectorCertification(input: {
+  workspaceId: string;
+  connectorKey: string;
+  displayName: string;
+  capabilities: string[];
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const connectorKey = input.connectorKey
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "_")
+    .slice(0, 128);
+  if (!connectorKey) throw new Error("Connector key is required.");
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const programPath =
+    `${base}/${appwriteTables.gaReadinessPrograms}/rows/${gaProgramRowId(input.workspaceId)}`;
+  const program = await appwrite.client.request<GaReadinessProgramRecord>(programPath);
+  const connectors = JSON.parse(
+    program.connectorCertifications || "[]",
+  ) as ConnectorCertificationRecord[];
+  if (connectors.some((item) => item.connectorKey === connectorKey)) {
+    throw new Error("This connector already has a certification candidate.");
+  }
+  const connector: ConnectorCertificationRecord = {
+    $id: enterpriseRowId(`ga_${connectorKey}`, input.workspaceId),
+    workspaceId: input.workspaceId,
+    programId: program.$id,
+    connectorKey,
+    displayName: input.displayName.trim().slice(0, 180),
+    status: "candidate_unverified",
+    capabilities: JSON.stringify(
+      input.capabilities.map((item) => item.trim().slice(0, 128)).filter(Boolean).slice(0, 25),
+    ),
+    scopesVerified: 0,
+    liveCallsTested: 0,
+    failureModesTested: 0,
+    rateLimitsVerified: 0,
+    certified: 0,
+    externalApproval: 0,
+    evidence: JSON.stringify({
+      userProposed: true,
+      productionCertificationCompleted: false,
+      credentialStoredInRecord: false,
+    }),
+    proposedBy: input.email.toLowerCase(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  await appwrite.client.request(programPath, {
+    method: "PATCH",
+    body: {
+      data: {
+        connectorCertifications: JSON.stringify([...connectors, connector]),
+        updatedAt: now,
+      },
+    },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ga.connector.proposed",
+    targetType: "connector_certification",
+    targetId: connector.$id,
+    metadata: {
+      certified: false,
+      externalApproval: false,
+      liveCallsTested: false,
+    },
+  });
+  return connector;
+}
+
+export async function createOperationalRunbook(input: {
+  workspaceId: string;
+  runbookKey: string;
+  name: string;
+  category: string;
+  content: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const programPath =
+    `${base}/${appwriteTables.gaReadinessPrograms}/rows/${gaProgramRowId(input.workspaceId)}`;
+  const program = await appwrite.client.request<GaReadinessProgramRecord>(programPath);
+  const runbookKey = input.runbookKey
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "_")
+    .slice(0, 128);
+  if (!runbookKey) throw new Error("Runbook key is required.");
+  const existing = JSON.parse(
+    program.operationalRunbooks || "[]",
+  ) as OperationalRunbookRecord[];
+  const version =
+    Math.max(
+      0,
+      ...existing
+        .filter((item) => item.runbookKey === runbookKey)
+        .map((item) => item.version),
+    ) + 1;
+  const now = new Date().toISOString();
+  const runbook: OperationalRunbookRecord = {
+    $id: enterpriseRowId(`ga_${runbookKey}_${version}`, input.workspaceId),
+    workspaceId: input.workspaceId,
+    programId: program.$id,
+    runbookKey,
+    name: input.name.trim().slice(0, 180),
+    category: input.category.trim().slice(0, 64),
+    status: "draft_unexercised",
+    version,
+    content: input.content.trim().slice(0, 16384),
+    ownerEmail: input.email.toLowerCase(),
+    reviewed: 0,
+    exercisePassed: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await appwrite.client.request(programPath, {
+    method: "PATCH",
+    body: {
+      data: {
+        operationalRunbooks: JSON.stringify([...existing, runbook]),
+        updatedAt: now,
+      },
+    },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ga.runbook.versioned",
+    targetType: "operational_runbook",
+    targetId: runbook.$id,
+    metadata: { reviewed: false, exercisePassed: false, version },
+  });
+  return runbook;
+}
+
+export async function createOnboardingChecklist(input: {
+  workspaceId: string;
+  name: string;
+  audience: string;
+  items: string[];
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const items = input.items
+    .map((title) => title.trim().slice(0, 300))
+    .filter(Boolean)
+    .slice(0, 25);
+  if (!items.length) throw new Error("At least one onboarding item is required.");
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const programPath =
+    `${base}/${appwriteTables.gaReadinessPrograms}/rows/${gaProgramRowId(input.workspaceId)}`;
+  const program = await appwrite.client.request<GaReadinessProgramRecord>(programPath);
+  const existing = JSON.parse(
+    program.onboardingChecklists || "[]",
+  ) as OnboardingChecklistRecord[];
+  const checklist: OnboardingChecklistRecord = {
+    $id: enterpriseRowId(`ga_onboarding_${existing.length + 1}`, input.workspaceId),
+    workspaceId: input.workspaceId,
+    programId: program.$id,
+    name: input.name.trim().slice(0, 180),
+    status: "draft_fixture_only",
+    audience: input.audience.trim().slice(0, 128),
+    totalItems: items.length,
+    completedItems: 0,
+    verifiedItems: 0,
+    productionCustomerUsed: 0,
+    items: JSON.stringify(
+      items.map((title) => ({ title, completed: false, verified: false })),
+    ),
+    ownerEmail: input.email.toLowerCase(),
+    createdAt: now,
+    updatedAt: now,
+  };
+  await appwrite.client.request(programPath, {
+    method: "PATCH",
+    body: {
+      data: {
+        onboardingChecklists: JSON.stringify([...existing, checklist]),
+        updatedAt: now,
+      },
+    },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ga.onboarding.drafted",
+    targetType: "onboarding_checklist",
+    targetId: checklist.$id,
+    metadata: {
+      completedItems: 0,
+      verifiedItems: 0,
+      productionCustomerUsed: false,
+    },
+  });
+  return checklist;
+}
+
+export async function requestGaLaunchDecision(input: {
+  workspaceId: string;
+  title: string;
+  rationale: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const programPath =
+    `${base}/${appwriteTables.gaReadinessPrograms}/rows/${gaProgramRowId(input.workspaceId)}`;
+  const program = await appwrite.client.request<GaReadinessProgramRecord>(programPath);
+  if (program.approvalStatus === "pending") {
+    throw new Error("A GA launch decision is already pending.");
+  }
+  const now = new Date().toISOString();
+  const title = input.title.trim().slice(0, 180);
+  const rationale = input.rationale.trim().slice(0, 2000);
+  await appwrite.client.request(programPath, {
+    method: "PATCH",
+    body: {
+      data: {
+        decisionTitle: title,
+        decisionStatus: "requested_evidence_gated",
+        decision: "pending",
+        decisionRationale: rationale,
+        approvalStatus: "pending",
+        decisionAuthorized: 0,
+        publicLaunchPerformed: 0,
+        customerInvitesSent: 0,
+        billingActivated: 0,
+        externalSystemsChanged: 0,
+        requestedBy: input.email.toLowerCase(),
+        requestedAt: now,
+        decidedBy: "",
+        decidedAt: "",
+        updatedAt: now,
+      },
+    },
+  });
+  const decision: GaLaunchDecisionRecord = {
+    $id: program.$id,
+    workspaceId: input.workspaceId,
+    programId: program.$id,
+    gateId: program.$id,
+    title,
+    status: "requested_evidence_gated",
+    decision: "pending",
+    rationale,
+    approvalStatus: "pending",
+    authorized: 0,
+    publicLaunchPerformed: 0,
+    customerInvitesSent: 0,
+    billingActivated: 0,
+    externalSystemsChanged: 0,
+    requestedBy: input.email.toLowerCase(),
+    createdAt: now,
+  };
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ga.launch.requested",
+    targetType: "ga_launch_decision",
+    targetId: decision.$id,
+    metadata: {
+      recommendation: program.recommendation,
+      authorized: false,
+      publicLaunchPerformed: false,
+      customerInvitesSent: false,
+      billingActivated: false,
+    },
+  });
+  return decision;
+}
+
+export async function recordGaLaunchDecision(input: {
+  workspaceId: string;
+  decisionId: string;
+  decision: "hold" | "approve";
+  rationale: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const programPath =
+    `${base}/${appwriteTables.gaReadinessPrograms}/rows/${input.decisionId}`;
+  const program = await appwrite.client.request<GaReadinessProgramRecord>(programPath);
+  if (
+    program.workspaceId !== input.workspaceId ||
+    program.approvalStatus !== "pending"
+  ) {
+    throw new Error("The GA launch decision is not pending in this workspace.");
+  }
+  const [loadTests, securityReviews] =
+    await Promise.all([
+      appwrite.client.request<RowList<LoadTestRunRecord>>(
+        `${base}/${appwriteTables.loadTestRuns}/rows`,
+        { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<SecurityReviewRunRecord>>(
+        `${base}/${appwriteTables.securityReviewRuns}/rows`,
+        { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+      ),
+    ]);
+  const connectors = JSON.parse(
+    program.connectorCertifications || "[]",
+  ) as ConnectorCertificationRecord[];
+  const runbooks = JSON.parse(
+    program.operationalRunbooks || "[]",
+  ) as OperationalRunbookRecord[];
+  const onboarding = JSON.parse(
+    program.onboardingChecklists || "[]",
+  ) as OnboardingChecklistRecord[];
+  const blockers = [
+    program.verified === 1 && program.productionLaunchAuthorized === 1
+      ? null
+      : "The GA readiness program is not independently verified or launch-authorized.",
+    loadTests.rows.some(
+      (run) =>
+        run.status === "production_load_passed" &&
+        run.productionTrafficUsed === 1 &&
+        run.externalLoadGeneratorUsed === 1 &&
+        run.decisionGrade === 1 &&
+        run.confidenceBps >= 8500,
+    )
+      ? null
+      : "No decision-grade production load and resilience test has passed.",
+    securityReviews.rows.some(
+      (run) =>
+        run.status === "external_review_passed" &&
+        run.externalPenTestCompleted === 1 &&
+        run.supplyChainVerified === 1 &&
+        run.secretsScanVerified === 1 &&
+        run.criticalFindings === 0 &&
+        run.highFindings === 0 &&
+        run.decisionGrade === 1,
+    )
+      ? null
+      : "External security, supply-chain, and secrets assurance is incomplete.",
+    connectors.length >= 3 &&
+    connectors.every(
+      (connector) =>
+        connector.status === "certified" &&
+        connector.certified === 1 &&
+        connector.scopesVerified === 1 &&
+        connector.liveCallsTested === 1 &&
+        connector.failureModesTested === 1 &&
+        connector.rateLimitsVerified === 1,
+    )
+      ? null
+      : "Every production connector must be certified with live failure evidence.",
+    runbooks.length >= 3 &&
+    runbooks.every(
+      (runbook) =>
+        runbook.status === "reviewed_exercised" &&
+        runbook.reviewed === 1 &&
+        runbook.exercisePassed === 1,
+    )
+      ? null
+      : "Operational runbooks are not all reviewed and successfully exercised.",
+    onboarding.length >= 1 &&
+    onboarding.every(
+      (checklist) =>
+        checklist.status === "verified_complete" &&
+        checklist.completedItems === checklist.totalItems &&
+        checklist.verifiedItems === checklist.totalItems &&
+        checklist.productionCustomerUsed === 1,
+    )
+      ? null
+      : "Production onboarding has not been fully completed and verified.",
+    program.recommendation === "launch" && program.scoreBps === 10000
+      ? null
+      : "The launch control gate recommends hold.",
+  ].filter(Boolean);
+  if (input.decision === "approve" && blockers.length) {
+    throw new Error(
+      `GA launch cannot be approved while evidence blockers remain: ${blockers.join(" ")}`,
+    );
+  }
+  const now = new Date().toISOString();
+  const status =
+    input.decision === "approve" ? "approved_no_launch" : "held_no_change";
+  const rationale = input.rationale.trim().slice(0, 2000);
+  const approvalStatus = input.decision === "approve" ? "approved" : "held";
+  const authorized = input.decision === "approve" ? 1 : 0;
+  await appwrite.client.request(programPath, {
+    method: "PATCH",
+    body: {
+      data: {
+        decisionStatus: status,
+        decision: input.decision,
+        decisionRationale: rationale,
+        approvalStatus,
+        decisionAuthorized: authorized,
+        launchAuthorized: authorized,
+        publicLaunchPerformed: 0,
+        customerInvitesSent: 0,
+        billingActivated: 0,
+        externalSystemsChanged: 0,
+        decidedBy: input.email.toLowerCase(),
+        decidedAt: now,
+        updatedAt: now,
+      },
+    },
+  });
+  const updated: GaLaunchDecisionRecord = {
+    $id: program.$id,
+    workspaceId: input.workspaceId,
+    programId: program.$id,
+    gateId: program.$id,
+    title: program.decisionTitle,
+    status,
+    decision: input.decision,
+    rationale,
+    approvalStatus,
+    authorized,
+    publicLaunchPerformed: 0,
+    customerInvitesSent: 0,
+    billingActivated: 0,
+    externalSystemsChanged: 0,
+    requestedBy: program.requestedBy || program.ownerEmail,
+    decidedBy: input.email.toLowerCase(),
+    createdAt: program.requestedAt || program.createdAt,
+    decidedAt: now,
+  };
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `ga.launch.${input.decision}`,
+    targetType: "ga_launch_decision",
+    targetId: program.$id,
+    metadata: {
+      blockers: blockers.length,
+      publicLaunchPerformed: false,
+      customerInvitesSent: false,
+      billingActivated: false,
       externalSystemsChanged: false,
     },
   });

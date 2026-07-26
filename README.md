@@ -62,18 +62,22 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 17 adds **Verity**, the ModelOps, Evaluation & AI Quality Governance
-control room. It versions model candidates and prompts, preserves immutable
-golden contracts, runs deterministic evaluation-pipeline checks, creates
-truthfully bounded drift baselines, drafts cost-quality routing at zero
-production traffic, and gates model promotion behind human review. Model
-registration never verifies or activates a provider release, prompt creation
-never approves or deploys it, and contract fixtures never impersonate live-model
-behavior. Drift remains explicitly non-decision-grade without live telemetry.
-Even a valid promotion approval records intent only and never deploys a model,
-changes traffic, or modifies an external system. The durable Appwrite
-foundation now spans 92 explicitly indexed tables.
+Phase 18 adds **Overture**, the General Availability Command control room. It
+combines launch evidence across resilience, security assurance, connector
+certification, operational runbooks, customer onboarding, AI release
+governance, and a final human launch decision. Its deterministic preflight
+creates clearly bounded fixtures: it sends no production requests, runs no
+external load generator or penetration traffic, scans no source or dependency
+graph, and claims no production capacity or security assurance. Connector
+candidates remain uncertified, runbooks remain unreviewed and unexercised, and
+onboarding remains fixture-only until independently verified. Even a valid GA
+approval records intent only and never makes the site public, sends customer
+invitations, activates billing, or changes an external system. The durable
+Appwrite foundation now spans 95 explicitly indexed tables. Overture keeps
+high-volume load and security evidence in dedicated tables while consolidating
+connector, runbook, onboarding, gate, and decision state in its GA program
+record to stay within the project table quota.
 
-**Next phase:** Phase 18 — General Availability Hardening & Launch: load and
-resilience testing, security review, connector certification, operational
-documentation, onboarding, launch controls, and production-readiness evidence.
+**Roadmap complete:** all 18 planned product phases are implemented. The next
+operating milestone is to close Overture's real-world evidence blockers and
+record the human GA decision.

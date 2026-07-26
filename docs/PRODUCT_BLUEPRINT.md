@@ -492,7 +492,9 @@ Make AI releases inspectable and governable without allowing registry metadata,
 synthetic fixtures, or same-run baselines to impersonate real model quality.
 
 **Implementation status:** Verity ships as an authenticated AI quality control
-surface backed by eight new Appwrite tables. Model candidates begin unverified
+surface backed by three new Appwrite tables, with quota-aware connector,
+runbook, onboarding, gate, and decision evidence consolidated in the GA
+readiness program record. Model candidates begin unverified
 and inactive; prompt versions are immutable drafts that are neither approved nor
 deployed. A four-case golden suite covers approval boundaries, untrusted
 instructions, evidence uncertainty, and cost guardrails. The Function-backed
@@ -510,6 +512,35 @@ only and never deploys a model, changes traffic, or modifies an external system.
 load and resilience testing, security review, connector certification,
 operational documentation, onboarding, launch controls, and production
 readiness evidence.
+
+### Phase 18 — General Availability Hardening & Launch
+
+Turn the complete platform evidence graph into a disciplined launch decision
+without allowing internal rehearsals, draft documents, or configured providers
+to impersonate production readiness.
+
+**Implementation status:** Overture ships as an authenticated General
+Availability Command surface backed by three new Appwrite tables, with
+quota-aware connector, runbook, onboarding, gate, and decision evidence
+consolidated in the GA readiness program record. Its readiness
+program covers resilience, security assurance, connector certification,
+operational runbooks, onboarding, AI release governance, and the final human
+launch gate. A Function-backed preflight creates a deterministic load fixture
+and internal security checklist, but explicitly sends zero production requests,
+uses no external load generator, injects no resilience failure, runs no
+penetration traffic, scans no source code or dependencies, and claims no
+production capacity or security assurance. Connector records begin as
+uncertified candidates with no verified scopes, live calls, failure modes, rate
+limits, or external approval. Runbooks are immutable unreviewed drafts until
+exercised; onboarding checklists are fixture-only until every item is completed
+and verified against real customer evidence. The launch gate remains on hold
+until all production-grade requirements are satisfied. Holding changes nothing;
+even a valid approval records intent only and never makes the site public,
+sends customer invitations, activates billing, or modifies an external system.
+
+**Roadmap status:** all 18 planned phases are implemented. Next, collect and
+independently verify the real-world Overture evidence required for a human GA
+decision.
 
 ## Success metrics
 
