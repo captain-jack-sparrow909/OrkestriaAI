@@ -362,6 +362,28 @@ Continuous Trust authorization all pass.
 multi-agent missions, delegated specialist roles, shared case rooms,
 cross-product evidence synthesis, executive briefs, and governed decisions.
 
+### Phase 12 — Collaborative Agent Teams & Executive Decisioning
+
+Bring the five product specialists together as one accountable decision system
+without collapsing their distinct roles, evidence, or safety boundaries.
+
+**Implementation status:** Ensemble ships as an authenticated collaborative
+case room backed by seven new Appwrite tables. Each Northstar Ensemble contains
+Vela, Loom, Tempo, Helio, and Aegis as advisory-only specialists that cannot
+execute or approve their own work. A Function-backed rehearsal creates five
+deterministic handoffs with no live model, customer data, provider action, or
+external execution. Synthetic citations remain visibly unverified, specialist
+conflicts survive synthesis instead of being silently averaged away, and
+executive briefs remain internal until explicitly reviewed. An owner may record
+a hold decision at any point; approval stays blocked until handoffs and sources
+are verified, conflicts are resolved, the brief is reviewed, and downstream
+approval requirements are assembled. Even an approved decision records intent
+only and never triggers an external action.
+
+**Next phase:** Organizational Memory & Operational Digital Twin — add
+entity-aware institutional memory, temporal evidence, scenario simulation,
+impact forecasting, and governed promotion of learned operating knowledge.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

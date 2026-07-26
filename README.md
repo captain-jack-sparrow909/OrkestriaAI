@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes forty-nine TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes fifty-six TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,14 +62,15 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 11 adds **Cadence**, the Adaptive Autonomy & Customer Intelligence
-control room. It durably tracks production feedback cycles, tenant-level
-evaluation, autonomy profiles, workload forecasts, customer outcome evidence,
-policy recommendations, and autonomy decisions. Synthetic baselines are never
-presented as production quality, self-reported outcomes remain unverified,
-policy recommendations remain draft-only, and autonomy cannot be promoted
-while tenant-specific evidence blockers remain.
+Phase 12 adds **Ensemble**, the Collaborative Agent Teams & Executive
+Decisioning control room. It brings Vela, Loom, Tempo, Helio, and Aegis into
+bounded five-specialist missions with explicit handoffs, visible conflicts,
+cross-product evidence synthesis, internal executive briefs, and governed
+decision records. The rehearsal is deterministic and uses no live model or
+customer data; every specialist remains advisory-only, synthetic citations are
+never treated as proof, and recording a decision never executes an external
+action.
 
-**Next phase:** Phase 12 — Collaborative Agent Teams & Executive Decisioning:
-multi-agent missions, delegated specialist roles, shared case rooms,
-cross-product evidence synthesis, and governed executive decisions.
+**Next phase:** Phase 13 — Organizational Memory & Operational Digital Twin:
+entity-aware institutional memory, temporal evidence, scenario simulation,
+impact forecasting, and governed promotion of learned operating knowledge.

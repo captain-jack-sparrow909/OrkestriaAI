@@ -64,6 +64,13 @@ test("declares unique Appwrite foundation resources", () => {
       "customer_outcomes",
       "policy_recommendations",
       "autonomy_decisions",
+      "agent_teams",
+      "team_specialists",
+      "mission_cases",
+      "mission_handoffs",
+      "evidence_syntheses",
+      "executive_briefs",
+      "executive_decisions",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -114,6 +121,13 @@ test("keeps every queried field indexed", () => {
   const customerOutcomes = tables.find((table) => table.id === "customer_outcomes");
   const policyRecommendations = tables.find((table) => table.id === "policy_recommendations");
   const autonomyDecisions = tables.find((table) => table.id === "autonomy_decisions");
+  const agentTeams = tables.find((table) => table.id === "agent_teams");
+  const teamSpecialists = tables.find((table) => table.id === "team_specialists");
+  const missionCases = tables.find((table) => table.id === "mission_cases");
+  const missionHandoffs = tables.find((table) => table.id === "mission_handoffs");
+  const evidenceSyntheses = tables.find((table) => table.id === "evidence_syntheses");
+  const executiveBriefs = tables.find((table) => table.id === "executive_briefs");
+  const executiveDecisions = tables.find((table) => table.id === "executive_decisions");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -158,6 +172,13 @@ test("keeps every queried field indexed", () => {
   assert.ok(customerOutcomes.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(policyRecommendations.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(autonomyDecisions.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(agentTeams.indexes.some((index) => index.key === "workspace_name_unique"));
+  assert.ok(teamSpecialists.indexes.some((index) => index.key === "team_agent_unique"));
+  assert.ok(missionCases.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(missionHandoffs.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(evidenceSyntheses.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(executiveBriefs.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(executiveDecisions.indexes.some((index) => index.attributes.includes("createdAt")));
 });
 
 test("enforces approval and execution roles", () => {

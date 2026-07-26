@@ -801,6 +801,123 @@ export type CadenceOverview = {
   signals: ProductSignalRecord[];
 };
 
+export type AgentTeamRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  status: string;
+  purpose: string;
+  policy: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TeamSpecialistRecord = {
+  $id: string;
+  workspaceId: string;
+  teamId: string;
+  agent: string;
+  name: string;
+  role: string;
+  status: string;
+  capabilities: string;
+  boundaries: string;
+  canExecute: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MissionCaseRecord = {
+  $id: string;
+  workspaceId: string;
+  teamId: string;
+  title: string;
+  objective: string;
+  status: string;
+  risk: string;
+  score: number;
+  recommendation: "hold" | "ready";
+  evidence: string;
+  blockers: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type MissionHandoffRecord = {
+  $id: string;
+  workspaceId: string;
+  caseId: string;
+  fromAgent: string;
+  toAgent: string;
+  status: string;
+  summary: string;
+  citations: string;
+  conflict: number;
+  externalActionsExecuted: number;
+  createdAt: string;
+};
+
+export type EvidenceSynthesisRecord = {
+  $id: string;
+  workspaceId: string;
+  caseId: string;
+  status: string;
+  sourceCount: number;
+  verifiedSourceCount: number;
+  conflictCount: number;
+  summary: string;
+  findings: string;
+  gaps: string;
+  customerDataUsed: number;
+  createdAt: string;
+};
+
+export type ExecutiveBriefRecord = {
+  $id: string;
+  workspaceId: string;
+  caseId: string;
+  title: string;
+  status: string;
+  audience: string;
+  summary: string;
+  recommendations: string;
+  evidence: string;
+  reviewed: number;
+  externallyShared: number;
+  createdBy: string;
+  reviewedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  reviewedAt?: string;
+};
+
+export type ExecutiveDecisionRecord = {
+  $id: string;
+  workspaceId: string;
+  caseId: string;
+  briefId: string;
+  decision: string;
+  status: string;
+  rationale: string;
+  authorized: number;
+  externalActionsExecuted: number;
+  decidedBy: string;
+  createdAt: string;
+};
+
+export type EnsembleOverview = {
+  workspaceId: string;
+  team: AgentTeamRecord;
+  specialists: TeamSpecialistRecord[];
+  cases: MissionCaseRecord[];
+  handoffs: MissionHandoffRecord[];
+  syntheses: EvidenceSynthesisRecord[];
+  briefs: ExecutiveBriefRecord[];
+  decisions: ExecutiveDecisionRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

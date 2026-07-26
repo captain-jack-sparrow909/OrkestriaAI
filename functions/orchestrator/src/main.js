@@ -77,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "adaptive_autonomy",
+      phase: "collaborative_decisioning",
       requestId,
     });
   }
@@ -968,6 +968,255 @@ async function orchestrator({ req, res, log, error }) {
         durationMs: Date.now() - evaluationStartedAt.getTime(),
       });
       return res.json({ evaluation, forecast, requestId });
+    }
+
+    if (path === "/ensemble/rehearse" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const teamId = String(body.teamId || "").slice(0, 36);
+      const caseId = String(body.caseId || "").slice(0, 36);
+      if (!workspaceId || !teamId || !caseId) {
+        return res.json({ error: "workspaceId, teamId, and caseId are required", requestId }, 400);
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json({ error: "Team rehearsals are not allowed for this role", requestId }, 403);
+      }
+      const [team, mission, specialistList] = await Promise.all([
+        tables.getRow({
+          databaseId: DATABASE_ID,
+          tableId: "agent_teams",
+          rowId: teamId,
+        }),
+        tables.getRow({
+          databaseId: DATABASE_ID,
+          tableId: "mission_cases",
+          rowId: caseId,
+        }),
+        tables.listRows({
+          databaseId: DATABASE_ID,
+          tableId: "team_specialists",
+          queries: [
+            Query.equal("workspaceId", [workspaceId]),
+            Query.equal("teamId", [teamId]),
+            Query.limit(10),
+          ],
+          total: false,
+        }),
+      ]);
+      if (
+        team.workspaceId !== workspaceId ||
+        mission.workspaceId !== workspaceId ||
+        mission.teamId !== teamId ||
+        team.status !== "active" ||
+        specialistList.rows.length !== 5 ||
+        specialistList.rows.some((specialist) => specialist.canExecute !== 0)
+      ) {
+        return res.json({ error: "The bounded specialist team is not valid", requestId }, 409);
+      }
+
+      const completedAt = new Date();
+      const contributions = [
+        {
+          agent: "vela",
+          to: "loom",
+          conflict: 0,
+          summary: "Mapped the read-only research path and marked every submission or purchase boundary for approval.",
+          citations: ["synthetic://browser-scope", "policy://approval-boundaries"],
+        },
+        {
+          agent: "loom",
+          to: "tempo",
+          conflict: 1,
+          summary: "Drafted a reversible workflow, but flagged that customer notification timing conflicts with incident containment.",
+          citations: ["synthetic://workflow-draft", "policy://external-messages"],
+        },
+        {
+          agent: "tempo",
+          to: "helio",
+          conflict: 1,
+          summary: "Prioritized reliability containment before cost action and preserved production-change approval.",
+          citations: ["synthetic://incident-timeline", "policy://production-change"],
+        },
+        {
+          agent: "helio",
+          to: "aegis",
+          conflict: 0,
+          summary: "Estimated a bounded savings range without claiming realized value or changing cloud resources.",
+          citations: ["synthetic://cost-baseline", "policy://financial-action"],
+        },
+        {
+          agent: "aegis",
+          to: "council",
+          conflict: 0,
+          summary: "Identified sensitive-data and permission risks; recommended owner review before any downstream action.",
+          citations: ["synthetic://security-review", "policy://sensitive-data"],
+        },
+      ];
+      const handoffs = await Promise.all(
+        contributions.map((contribution) =>
+          tables.createRow({
+            databaseId: DATABASE_ID,
+            tableId: "mission_handoffs",
+            rowId: ID.unique(),
+            data: {
+              workspaceId,
+              caseId,
+              fromAgent: contribution.agent,
+              toAgent: contribution.to,
+              status: "completed_synthetic",
+              summary: contribution.summary,
+              citations: JSON.stringify(contribution.citations),
+              conflict: contribution.conflict,
+              externalActionsExecuted: 0,
+              createdAt: completedAt.toISOString(),
+            },
+            permissions: [],
+          }),
+        ),
+      );
+      const synthesis = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "evidence_syntheses",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          caseId,
+          status: "synthetic_draft",
+          sourceCount: handoffs.length,
+          verifiedSourceCount: 0,
+          conflictCount: contributions.filter((item) => item.conflict === 1).length,
+          summary: "All five specialists contributed bounded analysis. Reliability containment leads; cost and communication actions remain downstream of security and approval review.",
+          findings: JSON.stringify([
+            "Contain reliability risk before optimization.",
+            "Keep external communication as a reviewed draft.",
+            "Preserve production, financial, and sensitive-data approvals.",
+          ]),
+          gaps: JSON.stringify([
+            "No production evidence was attached.",
+            "Two specialist tensions require owner resolution.",
+            "No downstream approval set has been assembled.",
+          ]),
+          customerDataUsed: 0,
+          createdAt: completedAt.toISOString(),
+        },
+        permissions: [],
+      });
+      const brief = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "executive_briefs",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          caseId,
+          title: `Decision brief · ${String(mission.title).slice(0, 150)}`,
+          status: "draft_internal",
+          audience: "workspace_executive_owner",
+          summary: "A deterministic collaboration rehearsal synthesized five specialist perspectives. The case remains on hold pending real evidence, conflict resolution, brief review, and downstream approvals.",
+          recommendations: JSON.stringify([
+            "Review the reliability-first sequence.",
+            "Resolve timing tension between containment and communication.",
+            "Attach verified production evidence before authorizing a plan.",
+          ]),
+          evidence: JSON.stringify({
+            synthesisId: synthesis.$id,
+            handoffIds: handoffs.map((handoff) => handoff.$id),
+            deterministic: true,
+            liveModelCalled: false,
+            customerDataUsed: false,
+            externallyShared: false,
+          }),
+          reviewed: 0,
+          externallyShared: 0,
+          createdBy: membership.userEmail,
+          createdAt: completedAt.toISOString(),
+          updatedAt: completedAt.toISOString(),
+        },
+        permissions: [],
+      });
+      const updatedCase = await tables.updateRow({
+        databaseId: DATABASE_ID,
+        tableId: "mission_cases",
+        rowId: caseId,
+        data: {
+          status: "rehearsal_complete",
+          score: 33,
+          recommendation: "hold",
+          evidence: JSON.stringify({
+            teamBounded: true,
+            allSpecialistsContributed: true,
+            handoffsExternallyVerified: false,
+            evidenceComplete: false,
+            briefReviewed: false,
+            downstreamApprovalsReady: false,
+            synthesisId: synthesis.$id,
+            briefId: brief.$id,
+          }),
+          blockers: JSON.stringify([
+            "Specialist handoffs use synthetic, unverified sources.",
+            "Evidence conflicts remain unresolved.",
+            "The executive brief has not been reviewed.",
+            "Downstream approval requirements are not assembled.",
+          ]),
+          updatedAt: completedAt.toISOString(),
+        },
+      });
+      await Promise.all([
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "ensemble_rehearsal",
+            quantity: handoffs.length,
+            unit: "specialist_contribution",
+            sourceType: "mission_case",
+            sourceId: caseId,
+            period: completedAt.toISOString().slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `ensemble-rehearsal:${synthesis.$id}`,
+            recordedAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+        tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "audit_events",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            actorEmail: membership.userEmail,
+            action: "ensemble.rehearsal.completed",
+            targetType: "mission_case",
+            targetId: caseId,
+            outcome: "success",
+            metadata: JSON.stringify({
+              synthesisId: synthesis.$id,
+              briefId: brief.$id,
+              specialistContributions: handoffs.length,
+              liveModelCalled: false,
+              customerDataUsed: false,
+              externalActionsExecuted: false,
+              requestId,
+            }),
+            occurredAt: completedAt.toISOString(),
+          },
+          permissions: [],
+        }),
+      ]);
+      audit(log, {
+        requestId,
+        event: "ensemble.rehearsal.completed",
+        workspaceId,
+        caseId,
+        synthesisId: synthesis.$id,
+        briefId: brief.$id,
+        specialistContributions: handoffs.length,
+        liveModelCalled: false,
+        customerDataUsed: false,
+        externalActionsExecuted: false,
+      });
+      return res.json({ mission: updatedCase, handoffs, synthesis, brief, requestId });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

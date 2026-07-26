@@ -48,6 +48,13 @@ export const appwriteTables = {
   customerOutcomes: "customer_outcomes",
   policyRecommendations: "policy_recommendations",
   autonomyDecisions: "autonomy_decisions",
+  agentTeams: "agent_teams",
+  teamSpecialists: "team_specialists",
+  missionCases: "mission_cases",
+  missionHandoffs: "mission_handoffs",
+  evidenceSyntheses: "evidence_syntheses",
+  executiveBriefs: "executive_briefs",
+  executiveDecisions: "executive_decisions",
 } as const;
 
 export type AppwriteServerConfig = {

@@ -53,6 +53,14 @@ import {
   type PolicyRecommendationRecord,
   type AutonomyDecisionRecord,
   type CadenceOverview,
+  type AgentTeamRecord,
+  type TeamSpecialistRecord,
+  type MissionCaseRecord,
+  type MissionHandoffRecord,
+  type EvidenceSynthesisRecord,
+  type ExecutiveBriefRecord,
+  type ExecutiveDecisionRecord,
+  type EnsembleOverview,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -4206,6 +4214,545 @@ export async function recordAutonomyDecision(input: {
       fromTier: decision.fromTier,
       toTier: decision.toTier,
       externalActionsChanged: false,
+    },
+  });
+  return decision;
+}
+
+function ensembleTeamRowId(workspaceId: string) {
+  return enterpriseRowId("ensemble", workspaceId);
+}
+
+function specialistRowId(agent: string, workspaceId: string) {
+  return enterpriseRowId(`specialist_${agent}`, workspaceId);
+}
+
+async function ensureEnsembleFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureCadenceFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const teamId = ensembleTeamRowId(workspace.workspaceId);
+  await createIfMissing(appwrite, `${base}/${appwriteTables.agentTeams}/rows`, {
+    rowId: teamId,
+    data: {
+      workspaceId: workspace.workspaceId,
+      name: "Northstar Ensemble",
+      status: "active",
+      purpose: "Synthesize browser, workflow, reliability, cost, and security evidence into one accountable decision record.",
+      policy: JSON.stringify({
+        collaborationMode: "advisory_only",
+        independentExecution: false,
+        crossWorkspaceData: false,
+        consequentialActionsRequireApproval: true,
+        executiveDecisionDoesNotExecute: true,
+      }),
+      createdBy: email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  const specialists = [
+    ["vela", "Vela", "Research lead", ["browser_research", "source_mapping"]],
+    ["loom", "Loom", "Workflow architect", ["workflow_design", "handoff_planning"]],
+    ["tempo", "Tempo", "Reliability lead", ["incident_analysis", "remediation_sequence"]],
+    ["helio", "Helio", "Financial analyst", ["cost_analysis", "savings_forecast"]],
+    ["aegis", "Aegis", "Security reviewer", ["risk_review", "control_mapping"]],
+  ];
+  for (const [agent, name, role, capabilities] of specialists) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.teamSpecialists}/rows`, {
+      rowId: specialistRowId(String(agent), workspace.workspaceId),
+      data: {
+        workspaceId: workspace.workspaceId,
+        teamId,
+        agent,
+        name,
+        role,
+        status: "available",
+        capabilities: JSON.stringify(capabilities),
+        boundaries: JSON.stringify({
+          workspaceOnly: true,
+          advisoryOnly: true,
+          externalToolsAllowed: false,
+          requiresCitations: true,
+          cannotApproveOwnWork: true,
+        }),
+        canExecute: 0,
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 12,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+            continuousTrust: true,
+            adaptiveAutonomy: true,
+            collaborativeDecisioning: true,
+          }),
+        },
+      },
+    },
+  );
+  return { ...workspace, teamId };
+}
+
+async function assessMissionCase(
+  appwrite: NonNullable<ReturnType<typeof getClient>>,
+  mission: MissionCaseRecord,
+) {
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [team, specialists, handoffs, syntheses, briefs] = await Promise.all([
+    appwrite.client.request<AgentTeamRecord>(
+      `${base}/${appwriteTables.agentTeams}/rows/${mission.teamId}`,
+    ),
+    appwrite.client.request<RowList<TeamSpecialistRecord>>(
+      `${base}/${appwriteTables.teamSpecialists}/rows`,
+      { queries: [query.equal("teamId", mission.teamId), query.limit(10)] },
+    ),
+    appwrite.client.request<RowList<MissionHandoffRecord>>(
+      `${base}/${appwriteTables.missionHandoffs}/rows`,
+      { queries: [query.equal("caseId", mission.$id), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<EvidenceSynthesisRecord>>(
+      `${base}/${appwriteTables.evidenceSyntheses}/rows`,
+      { queries: [query.equal("caseId", mission.$id), query.limit(25)] },
+    ),
+    appwrite.client.request<RowList<ExecutiveBriefRecord>>(
+      `${base}/${appwriteTables.executiveBriefs}/rows`,
+      { queries: [query.equal("caseId", mission.$id), query.limit(25)] },
+    ),
+  ]);
+  const latestSynthesis = syntheses.rows.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )[0];
+  const latestBrief = briefs.rows.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )[0];
+  const existingEvidence = parseRecord(mission.evidence);
+  const evidence = {
+    teamBounded:
+      team.status === "active" &&
+      specialists.rows.length === 5 &&
+      specialists.rows.every((specialist) => specialist.canExecute === 0),
+    allSpecialistsContributed:
+      new Set(handoffs.rows.map((handoff) => handoff.fromAgent)).size >= 5,
+    handoffsExternallyVerified:
+      handoffs.rows.length >= 5 &&
+      handoffs.rows.every((handoff) => handoff.status === "verified"),
+    evidenceComplete:
+      Boolean(latestSynthesis) &&
+      latestSynthesis.status === "verified" &&
+      latestSynthesis.verifiedSourceCount >= 5 &&
+      latestSynthesis.conflictCount === 0,
+    briefReviewed: latestBrief?.reviewed === 1,
+    downstreamApprovalsReady: existingEvidence.downstreamApprovalsReady === true,
+  };
+  const blockerMap: Record<keyof typeof evidence, string> = {
+    teamBounded: "The five-specialist team boundary is not verified.",
+    allSpecialistsContributed: "All five specialists have not contributed.",
+    handoffsExternallyVerified: "Specialist handoffs use synthetic or unverified sources.",
+    evidenceComplete: "Evidence conflicts or verification gaps remain.",
+    briefReviewed: "The executive brief has not been reviewed.",
+    downstreamApprovalsReady: "Downstream approval requirements are not assembled.",
+  };
+  const blockers = (Object.keys(evidence) as Array<keyof typeof evidence>)
+    .filter((key) => !evidence[key])
+    .map((key) => blockerMap[key]);
+  const score = Math.round(
+    (Object.values(evidence).filter(Boolean).length / Object.keys(evidence).length) *
+      100,
+  );
+  return appwrite.client.request<MissionCaseRecord>(
+    `${base}/${appwriteTables.missionCases}/rows/${mission.$id}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          score,
+          recommendation: blockers.length === 0 ? "ready" : "hold",
+          evidence: JSON.stringify({
+            ...evidence,
+            synthesisId: latestSynthesis?.$id,
+            briefId: latestBrief?.$id,
+          }),
+          blockers: JSON.stringify(blockers),
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    },
+  );
+}
+
+export async function getEnsembleOverview(
+  email: string,
+  displayName: string,
+): Promise<EnsembleOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureEnsembleFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view collaborative missions.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [team, specialists, cases] = await Promise.all([
+    appwrite.client.request<AgentTeamRecord>(
+      `${base}/${appwriteTables.agentTeams}/rows/${workspace.teamId}`,
+    ),
+    appwrite.client.request<RowList<TeamSpecialistRecord>>(
+      `${base}/${appwriteTables.teamSpecialists}/rows`,
+      {
+        queries: [
+          query.equal("workspaceId", workspace.workspaceId),
+          query.equal("teamId", workspace.teamId),
+          query.limit(10),
+        ],
+      },
+    ),
+    appwrite.client.request<RowList<MissionCaseRecord>>(
+      `${base}/${appwriteTables.missionCases}/rows`,
+      {
+        queries: [
+          query.equal("workspaceId", workspace.workspaceId),
+          query.orderDesc("createdAt"),
+          query.limit(25),
+        ],
+      },
+    ),
+  ]);
+  if (cases.rows[0]) cases.rows[0] = await assessMissionCase(appwrite, cases.rows[0]);
+  const common = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.orderDesc("createdAt"),
+    query.limit(100),
+  ];
+  const [handoffs, syntheses, briefs, decisions] = await Promise.all([
+    appwrite.client.request<RowList<MissionHandoffRecord>>(
+      `${base}/${appwriteTables.missionHandoffs}/rows`,
+      { queries: common },
+    ),
+    appwrite.client.request<RowList<EvidenceSynthesisRecord>>(
+      `${base}/${appwriteTables.evidenceSyntheses}/rows`,
+      { queries: common },
+    ),
+    appwrite.client.request<RowList<ExecutiveBriefRecord>>(
+      `${base}/${appwriteTables.executiveBriefs}/rows`,
+      { queries: common },
+    ),
+    appwrite.client.request<RowList<ExecutiveDecisionRecord>>(
+      `${base}/${appwriteTables.executiveDecisions}/rows`,
+      { queries: common },
+    ),
+  ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    team,
+    specialists: specialists.rows,
+    cases: cases.rows,
+    handoffs: handoffs.rows,
+    syntheses: syntheses.rows,
+    briefs: briefs.rows,
+    decisions: decisions.rows,
+  };
+}
+
+export async function createMissionCase(input: {
+  workspaceId: string;
+  email: string;
+  displayName: string;
+  title: string;
+  objective: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureEnsembleFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "agents.run")) {
+    throw new Error("You do not have permission to create collaborative missions.");
+  }
+  const now = new Date().toISOString();
+  const mission = await appwrite.client.request<MissionCaseRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.missionCases}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          teamId: workspace.teamId,
+          title: input.title.trim().slice(0, 180),
+          objective: input.objective.trim().slice(0, 4000),
+          status: "scoped",
+          risk: "medium",
+          score: 17,
+          recommendation: "hold",
+          evidence: JSON.stringify({
+            teamBounded: true,
+            allSpecialistsContributed: false,
+            handoffsExternallyVerified: false,
+            evidenceComplete: false,
+            briefReviewed: false,
+            downstreamApprovalsReady: false,
+          }),
+          blockers: JSON.stringify([
+            "All five specialists have not contributed.",
+            "Specialist handoffs use synthetic or unverified sources.",
+            "Evidence conflicts or verification gaps remain.",
+            "The executive brief has not been reviewed.",
+            "Downstream approval requirements are not assembled.",
+          ]),
+          createdBy: input.email.toLowerCase(),
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ensemble.mission.scoped",
+    targetType: "mission_case",
+    targetId: mission.$id,
+    metadata: { teamId: workspace.teamId, externalActionsExecuted: false },
+  });
+  return mission;
+}
+
+export async function runEnsembleRehearsal(input: {
+  workspaceId: string;
+  caseId: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureEnsembleFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          teamId: workspace.teamId,
+          caseId: input.caseId,
+        }),
+        async: false,
+        path: "/ensemble/rehearse",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    mission?: MissionCaseRecord;
+    handoffs?: MissionHandoffRecord[];
+    synthesis?: EvidenceSynthesisRecord;
+    brief?: ExecutiveBriefRecord;
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Ensemble rehearsal returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.mission ||
+    response.handoffs?.length !== 5 ||
+    !response.synthesis ||
+    !response.brief
+  ) {
+    throw new Error(response?.error || execution.errors || "Ensemble rehearsal failed.");
+  }
+  return response;
+}
+
+export async function reviewExecutiveBrief(input: {
+  workspaceId: string;
+  briefId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const current = await appwrite.client.request<ExecutiveBriefRecord>(
+    `${base}/${appwriteTables.executiveBriefs}/rows/${input.briefId}`,
+  );
+  if (current.workspaceId !== input.workspaceId || current.externallyShared === 1) {
+    throw new Error("This brief is not available for internal review.");
+  }
+  const now = new Date().toISOString();
+  const brief = await appwrite.client.request<ExecutiveBriefRecord>(
+    `${base}/${appwriteTables.executiveBriefs}/rows/${input.briefId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          status: "reviewed_internal",
+          reviewed: 1,
+          reviewedBy: input.email.toLowerCase(),
+          reviewedAt: now,
+          updatedAt: now,
+        },
+      },
+    },
+  );
+  const mission = await appwrite.client.request<MissionCaseRecord>(
+    `${base}/${appwriteTables.missionCases}/rows/${brief.caseId}`,
+  );
+  await assessMissionCase(appwrite, mission);
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ensemble.brief.reviewed",
+    targetType: "executive_brief",
+    targetId: brief.$id,
+    metadata: { externallyShared: false, downstreamActionTriggered: false },
+  });
+  return brief;
+}
+
+export async function refreshMissionEvidence(input: {
+  workspaceId: string;
+  caseId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const mission = await appwrite.client.request<MissionCaseRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.missionCases}/rows/${input.caseId}`,
+  );
+  if (mission.workspaceId !== input.workspaceId) {
+    throw new Error("Mission is outside this workspace.");
+  }
+  const assessed = await assessMissionCase(appwrite, mission);
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "ensemble.mission_evidence.refreshed",
+    targetType: "mission_case",
+    targetId: mission.$id,
+    metadata: { score: assessed.score, recommendation: assessed.recommendation },
+  });
+  return assessed;
+}
+
+export async function recordExecutiveDecision(input: {
+  workspaceId: string;
+  caseId: string;
+  email: string;
+  decision: "hold" | "approve";
+  rationale: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const mission = await appwrite.client.request<MissionCaseRecord>(
+    `${base}/${appwriteTables.missionCases}/rows/${input.caseId}`,
+  );
+  if (mission.workspaceId !== input.workspaceId) {
+    throw new Error("Mission is outside this workspace.");
+  }
+  const assessed = await assessMissionCase(appwrite, mission);
+  const blockers = JSON.parse(assessed.blockers || "[]") as string[];
+  if (
+    input.decision === "approve" &&
+    (assessed.recommendation !== "ready" || blockers.length)
+  ) {
+    throw new Error("The executive plan cannot be approved while evidence blockers remain.");
+  }
+  const briefList = await appwrite.client.request<RowList<ExecutiveBriefRecord>>(
+    `${base}/${appwriteTables.executiveBriefs}/rows`,
+    {
+      queries: [
+        query.equal("caseId", input.caseId),
+        query.orderDesc("createdAt"),
+        query.limit(1),
+      ],
+    },
+  );
+  const brief = briefList.rows[0];
+  if (!brief) throw new Error("Create an executive brief before recording a decision.");
+  const now = new Date().toISOString();
+  const decision = await appwrite.client.request<ExecutiveDecisionRecord>(
+    `${base}/${appwriteTables.executiveDecisions}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          caseId: input.caseId,
+          briefId: brief.$id,
+          decision: input.decision,
+          status: "recorded_no_execution",
+          rationale: input.rationale.trim().slice(0, 2000),
+          authorized: input.decision === "approve" ? 1 : 0,
+          externalActionsExecuted: 0,
+          decidedBy: input.email.toLowerCase(),
+          createdAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await appwrite.client.request(
+    `${base}/${appwriteTables.missionCases}/rows/${input.caseId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          status: input.decision === "approve" ? "decision_approved" : "decision_held",
+          updatedAt: now,
+        },
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `ensemble.executive_decision.${input.decision}`,
+    targetType: "executive_decision",
+    targetId: decision.$id,
+    metadata: {
+      caseId: input.caseId,
+      authorized: decision.authorized === 1,
+      externalActionsExecuted: false,
     },
   });
   return decision;
