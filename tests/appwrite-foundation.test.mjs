@@ -39,6 +39,11 @@ test("declares unique Appwrite foundation resources", () => {
       "recovery_drills",
       "validation_runs",
       "pilot_programs",
+      "pilot_members",
+      "action_scopes",
+      "pilot_exercises",
+      "support_rotations",
+      "launch_decisions",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -64,6 +69,11 @@ test("keeps every queried field indexed", () => {
   const recoveryDrills = tables.find((table) => table.id === "recovery_drills");
   const validationRuns = tables.find((table) => table.id === "validation_runs");
   const pilotPrograms = tables.find((table) => table.id === "pilot_programs");
+  const pilotMembers = tables.find((table) => table.id === "pilot_members");
+  const actionScopes = tables.find((table) => table.id === "action_scopes");
+  const pilotExercises = tables.find((table) => table.id === "pilot_exercises");
+  const supportRotations = tables.find((table) => table.id === "support_rotations");
+  const launchDecisions = tables.find((table) => table.id === "launch_decisions");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -83,6 +93,11 @@ test("keeps every queried field indexed", () => {
   assert.ok(recoveryDrills.indexes.some((index) => index.attributes.includes("startedAt")));
   assert.ok(validationRuns.indexes.some((index) => index.key === "job_unique"));
   assert.ok(pilotPrograms.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(pilotMembers.indexes.some((index) => index.key === "workspace_email_unique"));
+  assert.ok(actionScopes.indexes.some((index) => index.key === "workspace_action_unique"));
+  assert.ok(pilotExercises.indexes.some((index) => index.attributes.includes("startedAt")));
+  assert.ok(supportRotations.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(launchDecisions.indexes.some((index) => index.key === "workspace_unique"));
 });
 
 test("enforces approval and execution roles", () => {

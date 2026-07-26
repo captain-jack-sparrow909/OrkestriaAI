@@ -278,6 +278,26 @@ data proof. Pilot readiness advances only as durable controls complete.
 the first pilot cohort, exercise narrowly scoped production actions, establish
 support rotations, and make an evidence-based launch decision.
 
+### Phase 8 — Live pilot and GA readiness
+
+Operate the first controlled cohort, establish explicit production-action
+envelopes, staff support coverage, collect launch evidence, and record a
+defensible go/hold decision.
+
+**Implementation status:** Launchroom ships as an authenticated Pilot & GA
+Command Center backed by five new Appwrite tables. Pilot participants begin as
+`draft_not_sent`, support backups remain unacknowledged until external evidence
+exists, and predefined production scopes are evaluated by the Appwrite
+orchestrator. The internal health snapshot can produce read-only evidence
+without an external side effect; provider-dependent scopes stop at
+authorization, executor, or approval boundaries. Launch evidence is recomputed
+from durable records, and an owner cannot record “go” while blockers remain.
+
+**Next phase:** General Availability & Scale Operations — deploy verified
+provider executors, ingest real pilot telemetry, exercise incident response,
+activate billing safeguards and customer support workflows, and expand only
+when measured SLOs support it.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

@@ -23,6 +23,11 @@ export const appwriteTables = {
   recoveryDrills: "recovery_drills",
   validationRuns: "validation_runs",
   pilotPrograms: "pilot_programs",
+  pilotMembers: "pilot_members",
+  actionScopes: "action_scopes",
+  pilotExercises: "pilot_exercises",
+  supportRotations: "support_rotations",
+  launchDecisions: "launch_decisions",
 } as const;
 
 export type AppwriteServerConfig = {

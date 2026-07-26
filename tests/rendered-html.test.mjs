@@ -58,7 +58,7 @@ test("renders every primary marketing route", async () => {
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -197,7 +197,37 @@ test("ships the Phase 7 production operations center and durable worker rehearsa
   assert.match(schema, /id: "recovery_drills"/);
   assert.match(schema, /id: "validation_runs"/);
   assert.match(schema, /id: "pilot_programs"/);
-  assert.match(chrome, /Phase 7 live/);
+  assert.match(chrome, /active === "operations"/);
+});
+
+test("ships the Phase 8 Launchroom with truthful pilot and launch controls", async () => {
+  const [launchroom, route, repository, orchestrator, schema, chrome] = await Promise.all([
+    readFile(new URL("../app/pilot/Launchroom.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/pilot/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(launchroom, /Earn the launch/);
+  assert.match(launchroom, /Invitation truth/);
+  assert.match(launchroom, /Production action envelope/);
+  assert.match(launchroom, /Record hold/);
+  assert.match(route, /run_exercise/);
+  assert.match(route, /record_decision/);
+  assert.match(repository, /draft_not_sent/);
+  assert.match(repository, /externalInvitationSent: false/);
+  assert.match(repository, /A go decision cannot be recorded while launch blockers remain/);
+  assert.match(orchestrator, /path === "\/pilot\/exercise"/);
+  assert.match(orchestrator, /externalActionExecuted: false/);
+  assert.match(orchestrator, /blocked_executor_unavailable/);
+  assert.match(schema, /id: "pilot_members"/);
+  assert.match(schema, /id: "action_scopes"/);
+  assert.match(schema, /id: "pilot_exercises"/);
+  assert.match(schema, /id: "support_rotations"/);
+  assert.match(schema, /id: "launch_decisions"/);
+  assert.match(chrome, /Phase 8 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

@@ -77,7 +77,7 @@ async function orchestrator({ req, res, log, error }) {
     return res.json({
       ok: true,
       service: "orkestria-orchestrator",
-      phase: "operations",
+      phase: "pilot_ga_readiness",
       requestId,
     });
   }
@@ -262,6 +262,192 @@ async function orchestrator({ req, res, log, error }) {
         durationMs: Date.now() - started.getTime(),
       });
       return res.json({ job: completedJob, validation, usage: { quantity: 1, unit: "execution" }, requestId });
+    }
+
+    if (path === "/pilot/exercise" && method === "POST") {
+      const workspaceId = String(body.workspaceId || "").slice(0, 36);
+      const pilotId = String(body.pilotId || "").slice(0, 36);
+      const scopeId = String(body.scopeId || "").slice(0, 36);
+      if (!workspaceId || !pilotId || !scopeId) {
+        return res.json({ error: "workspaceId, pilotId, and scopeId are required", requestId }, 400);
+      }
+      const membership = await membershipFor(tables, workspaceId, userId);
+      if (!membership || !canEnqueueJob(membership.role)) {
+        return res.json({ error: "Pilot exercises are not allowed for this role", requestId }, 403);
+      }
+      const scope = await tables.getRow({
+        databaseId: DATABASE_ID,
+        tableId: "action_scopes",
+        rowId: scopeId,
+      });
+      if (scope.workspaceId !== workspaceId || scope.status === "disabled") {
+        return res.json({ error: "Action scope is unavailable in this workspace", requestId }, 409);
+      }
+
+      const now = new Date().toISOString();
+      const authorizationRows = scope.provider === "orkestria"
+        ? { rows: [] }
+        : await tables.listRows({
+            databaseId: DATABASE_ID,
+            tableId: "provider_authorizations",
+            queries: [
+              Query.equal("workspaceId", [workspaceId]),
+              Query.equal("state", ["authorized"]),
+              Query.limit(1),
+            ],
+            total: false,
+          });
+      const authorization = authorizationRows.rows[0] || null;
+      let state = "blocked_provider_authorization";
+      let outcome = "no_external_action";
+      let externalActionExecuted = 0;
+      let evidence = {
+        scope: scope.action,
+        environment: scope.environment,
+        provider: scope.provider,
+        providerAuthorizationVerified: false,
+        externalActionExecuted: false,
+        note: "No provider call was attempted because verified authorization is absent.",
+      };
+
+      if (scope.provider === "orkestria" && scope.action === "control_plane.health_snapshot") {
+        state = "succeeded";
+        outcome = "internal_snapshot_recorded";
+        evidence = {
+          scope: scope.action,
+          environment: scope.environment,
+          provider: scope.provider,
+          providerAuthorizationVerified: false,
+          externalActionExecuted: false,
+          service: "orkestria-orchestrator",
+          phase: "pilot_ga_readiness",
+          membershipVerified: true,
+          capturedAt: now,
+          note: "This is an internal read-only control-plane snapshot, not an external provider action.",
+        };
+      } else if (authorization && Number(scope.approvalRequired) === 1) {
+        state = "awaiting_approval";
+        outcome = "approval_checkpoint_created";
+        evidence = {
+          scope: scope.action,
+          environment: scope.environment,
+          provider: scope.provider,
+          providerAuthorizationVerified: true,
+          externalActionExecuted: false,
+          note: "The external action remains paused at a human approval checkpoint.",
+        };
+      } else if (authorization) {
+        state = "blocked_executor_unavailable";
+        outcome = "no_external_action";
+        evidence = {
+          scope: scope.action,
+          environment: scope.environment,
+          provider: scope.provider,
+          providerAuthorizationVerified: true,
+          externalActionExecuted: false,
+          note: "Authorization exists, but no verified connector executor is deployed for this action.",
+        };
+      }
+
+      let exercise = await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "pilot_exercises",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          pilotId,
+          scopeId,
+          ...(authorization ? { providerAuthorizationId: authorization.$id } : {}),
+          state,
+          outcome,
+          externalActionExecuted,
+          evidence: JSON.stringify(evidence),
+          initiatedBy: membership.userEmail,
+          startedAt: now,
+          completedAt: state === "succeeded" ? now : undefined,
+        },
+        permissions: [],
+      });
+
+      let approval = null;
+      if (state === "awaiting_approval") {
+        approval = await tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "approvals",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            runId: exercise.$id,
+            action: scope.name,
+            description: `Pilot-scoped ${scope.action} in ${scope.environment}. No action has executed.`,
+            risk: scope.risk,
+            state: "pending",
+            requestedBy: membership.userEmail,
+            requestedAt: now,
+          },
+          permissions: [],
+        });
+        exercise = await tables.updateRow({
+          databaseId: DATABASE_ID,
+          tableId: "pilot_exercises",
+          rowId: exercise.$id,
+          data: { approvalId: approval.$id },
+        });
+      }
+
+      if (state === "succeeded") {
+        await tables.createRow({
+          databaseId: DATABASE_ID,
+          tableId: "usage_ledger",
+          rowId: ID.unique(),
+          data: {
+            workspaceId,
+            meter: "pilot_exercise",
+            quantity: 1,
+            unit: "exercise",
+            sourceType: "pilot_exercise",
+            sourceId: exercise.$id,
+            period: now.slice(0, 7),
+            costCents: 0,
+            idempotencyKey: `pilot-exercise:${exercise.$id}`,
+            recordedAt: now,
+          },
+          permissions: [],
+        });
+      }
+
+      await tables.createRow({
+        databaseId: DATABASE_ID,
+        tableId: "audit_events",
+        rowId: ID.unique(),
+        data: {
+          workspaceId,
+          actorEmail: membership.userEmail,
+          action: "pilot.exercise.evaluated",
+          targetType: "pilot_exercise",
+          targetId: exercise.$id,
+          outcome: state === "succeeded" ? "success" : "blocked",
+          metadata: JSON.stringify({
+            scopeId,
+            state,
+            externalActionExecuted: false,
+            approvalId: approval?.$id || null,
+            requestId,
+          }),
+          occurredAt: now,
+        },
+        permissions: [],
+      });
+      audit(log, {
+        requestId,
+        event: "pilot.exercise.evaluated",
+        workspaceId,
+        exerciseId: exercise.$id,
+        state,
+        externalActionExecuted: false,
+        durationMs: Date.now() - startedAt,
+      });
+      return res.json({ exercise, approval, requestId });
     }
 
     const approvalMatch = path.match(/^\/approvals\/([A-Za-z0-9._-]{1,36})\/decision$/);

@@ -355,6 +355,95 @@ export type OperationsOverview = {
   pilot: PilotProgramRecord;
 };
 
+export type PilotMemberRecord = {
+  $id: string;
+  workspaceId: string;
+  pilotId: string;
+  email: string;
+  role: string;
+  status: string;
+  invitationState: string;
+  consentState: string;
+  lastActiveAt?: string;
+  invitedBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ActionScopeRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  provider: string;
+  environment: string;
+  action: string;
+  risk: RiskLevel;
+  approvalRequired: number;
+  status: string;
+  constraints: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PilotExerciseRecord = {
+  $id: string;
+  workspaceId: string;
+  pilotId: string;
+  scopeId: string;
+  providerAuthorizationId?: string;
+  approvalId?: string;
+  state: string;
+  outcome: string;
+  externalActionExecuted: number;
+  evidence: string;
+  initiatedBy: string;
+  startedAt: string;
+  completedAt?: string;
+};
+
+export type SupportRotationRecord = {
+  $id: string;
+  workspaceId: string;
+  name: string;
+  status: string;
+  timezone: string;
+  primaryEmail: string;
+  secondaryEmail?: string;
+  coverage: string;
+  escalationPolicy: string;
+  lastHandoffAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LaunchDecisionRecord = {
+  $id: string;
+  workspaceId: string;
+  status: string;
+  recommendation: "hold" | "ready";
+  score: number;
+  blockers: string;
+  evidence: string;
+  decidedBy?: string;
+  decisionRationale?: string;
+  createdAt: string;
+  decidedAt?: string;
+};
+
+export type LaunchroomOverview = {
+  workspaceId: string;
+  pilot: PilotProgramRecord;
+  members: PilotMemberRecord[];
+  scopes: ActionScopeRecord[];
+  exercises: PilotExerciseRecord[];
+  rotation: SupportRotationRecord;
+  decision: LaunchDecisionRecord;
+  authorizations: ProviderAuthorizationRecord[];
+  validations: ValidationRunRecord[];
+  drills: RecoveryDrillRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

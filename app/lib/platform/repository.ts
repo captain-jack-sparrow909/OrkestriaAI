@@ -14,16 +14,22 @@ import {
   type EcosystemOverview,
   type EnterpriseConfigRecord,
   type EnterpriseOverview,
+  type ActionScopeRecord,
   type JobRecord,
+  type LaunchDecisionRecord,
+  type LaunchroomOverview,
   type MembershipRecord,
   type OperationsOverview,
   type PartnerSubmissionRecord,
+  type PilotExerciseRecord,
+  type PilotMemberRecord,
   type PilotProgramRecord,
   type PolicyPackRecord,
   type PolicyTemplateRecord,
   type ProductSignalRecord,
   type ProviderAuthorizationRecord,
   type RecoveryDrillRecord,
+  type SupportRotationRecord,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -1954,4 +1960,548 @@ export async function markPilotCohortInvited(input: {
     metadata: { targetUsers: pilot.targetUsers, externalInvitationsSent: false },
   });
   return pilot;
+}
+
+function launchDecisionRowId(workspaceId: string) {
+  return enterpriseRowId("launch", workspaceId);
+}
+
+function supportRotationRowId(workspaceId: string) {
+  return enterpriseRowId("support", workspaceId);
+}
+
+function actionScopeRowId(kind: string, workspaceId: string) {
+  return enterpriseRowId(`scope_${kind}`, workspaceId);
+}
+
+function parseRecord(value: string) {
+  try {
+    const parsed = JSON.parse(value || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+async function ensureLaunchroomFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureOperationsFoundation(email, displayName);
+  if (!workspace) return null;
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const now = new Date().toISOString();
+  const pilotId = pilotRowId(workspace.workspaceId);
+  const ownerHash = await sha256(`${workspace.workspaceId}:${email.toLowerCase()}`);
+
+  await createIfMissing(appwrite, `${base}/${appwriteTables.pilotMembers}/rows`, {
+    rowId: `pilotmember_${ownerHash.slice(0, 24)}`,
+    data: {
+      workspaceId: workspace.workspaceId,
+      pilotId,
+      email: email.toLowerCase(),
+      role: "pilot_owner",
+      status: "active",
+      invitationState: "self_enrolled",
+      consentState: "owner_confirmed",
+      lastActiveAt: now,
+      invitedBy: email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+
+  const scopes = [
+    {
+      id: actionScopeRowId("health", workspace.workspaceId),
+      name: "Control-plane health snapshot",
+      provider: "orkestria",
+      action: "control_plane.health_snapshot",
+      risk: "low",
+      approvalRequired: 0,
+      status: "active",
+      constraints: {
+        readOnly: true,
+        externalProviderCall: false,
+        dataClasses: ["service_health", "release_metadata"],
+        maximumExecutionsPerHour: 12,
+      },
+    },
+    {
+      id: actionScopeRowId("deploy", workspace.workspaceId),
+      name: "Production deployment status",
+      provider: "observability",
+      action: "deployment.status.read",
+      risk: "low",
+      approvalRequired: 0,
+      status: "blocked_provider_authorization",
+      constraints: {
+        readOnly: true,
+        externalProviderCall: true,
+        allowedResources: ["production"],
+        maximumExecutionsPerHour: 6,
+      },
+    },
+    {
+      id: actionScopeRowId("rollback", workspace.workspaceId),
+      name: "Production rollback proposal",
+      provider: "observability",
+      action: "deployment.rollback.propose",
+      risk: "high",
+      approvalRequired: 1,
+      status: "blocked_provider_authorization",
+      constraints: {
+        dryRunOnly: true,
+        externalProviderCall: true,
+        approvalMode: "single_owner",
+        maximumExecutionsPerHour: 1,
+      },
+    },
+  ];
+  for (const scope of scopes) {
+    await createIfMissing(appwrite, `${base}/${appwriteTables.actionScopes}/rows`, {
+      rowId: scope.id,
+      data: {
+        workspaceId: workspace.workspaceId,
+        name: scope.name,
+        provider: scope.provider,
+        environment: "production",
+        action: scope.action,
+        risk: scope.risk,
+        approvalRequired: scope.approvalRequired,
+        status: scope.status,
+        constraints: JSON.stringify(scope.constraints),
+        createdBy: email.toLowerCase(),
+        createdAt: now,
+        updatedAt: now,
+      },
+      permissions: [],
+    });
+  }
+
+  await createIfMissing(appwrite, `${base}/${appwriteTables.supportRotations}/rows`, {
+    rowId: supportRotationRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      name: "Pilot response rotation",
+      status: "partial",
+      timezone: "UTC",
+      primaryEmail: email.toLowerCase(),
+      coverage: "business_hours",
+      escalationPolicy: JSON.stringify({
+        acknowledgementMinutes: 15,
+        escalationMinutes: 30,
+        severityOneChannel: "not_connected",
+        backupAcknowledged: false,
+      }),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+
+  await createIfMissing(appwrite, `${base}/${appwriteTables.launchDecisions}/rows`, {
+    rowId: launchDecisionRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      status: "assessing",
+      recommendation: "hold",
+      score: 0,
+      blockers: JSON.stringify(["Launch evidence has not been refreshed."]),
+      evidence: "{}",
+      createdAt: now,
+    },
+    permissions: [],
+  });
+
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 8,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+async function assessLaunch(
+  appwrite: NonNullable<ReturnType<typeof getClient>>,
+  workspaceId: string,
+) {
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [authorizations, members, exercises, validations, drills, rotation] =
+    await Promise.all([
+      appwrite.client.request<RowList<ProviderAuthorizationRecord>>(
+        `${base}/${appwriteTables.providerAuthorizations}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<PilotMemberRecord>>(
+        `${base}/${appwriteTables.pilotMembers}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<PilotExerciseRecord>>(
+        `${base}/${appwriteTables.pilotExercises}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<ValidationRunRecord>>(
+        `${base}/${appwriteTables.validationRuns}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<RecoveryDrillRecord>>(
+        `${base}/${appwriteTables.recoveryDrills}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<SupportRotationRecord>(
+        `${base}/${appwriteTables.supportRotations}/rows/${supportRotationRowId(workspaceId)}`,
+      ),
+    ]);
+
+  const restoreProven = drills.rows.some(
+    (drill) => parseRecord(drill.evidence).dataRestored === true,
+  );
+  const evidence = {
+    providerAuthorized: authorizations.rows.some((item) => item.state === "authorized"),
+    activePilotMember: members.rows.some(
+      (member) =>
+        member.status === "active" &&
+        ["accepted", "owner_confirmed"].includes(member.consentState),
+    ),
+    externalCohortContacted: members.rows.some(
+      (member) => member.invitationState === "sent" || member.invitationState === "accepted",
+    ),
+    boundedExercisePassed: exercises.rows.some((exercise) => exercise.state === "succeeded"),
+    externalProductionActionProven: exercises.rows.some(
+      (exercise) => exercise.externalActionExecuted === 1 && exercise.state === "succeeded",
+    ),
+    supportCoverageReady: rotation.status === "ready",
+    workerValidationPassed: validations.rows.some(
+      (validation) => validation.status === "passed" && validation.score === 100,
+    ),
+    recoveryRestoreProven: restoreProven,
+  };
+  const blockerLabels: Record<keyof typeof evidence, string> = {
+    providerAuthorized: "No externally verified provider authorization.",
+    activePilotMember: "No active pilot member with recorded consent.",
+    externalCohortContacted: "No external pilot invitation or acceptance evidence.",
+    boundedExercisePassed: "No bounded production-scope exercise has passed.",
+    externalProductionActionProven: "No scoped external production action has verified evidence.",
+    supportCoverageReady: "Support rotation lacks acknowledged backup coverage.",
+    workerValidationPassed: "The durable worker validation suite has not passed.",
+    recoveryRestoreProven: "Recovery is tabletop-only; a real restore has not been proven.",
+  };
+  const entries = Object.entries(evidence) as [keyof typeof evidence, boolean][];
+  const blockers = entries.filter(([, passed]) => !passed).map(([key]) => blockerLabels[key]);
+  const score = Math.round((entries.filter(([, passed]) => passed).length / entries.length) * 100);
+  const recommendation = blockers.length === 0 ? "ready" : "hold";
+  const path = `${base}/${appwriteTables.launchDecisions}/rows/${launchDecisionRowId(workspaceId)}`;
+  const current = await appwrite.client.request<LaunchDecisionRecord>(path);
+  return appwrite.client.request<LaunchDecisionRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        status: current.status === "decision_recorded" ? current.status : "assessing",
+        recommendation:
+          current.status === "decision_recorded" ? current.recommendation : recommendation,
+        score,
+        blockers: JSON.stringify(blockers),
+        evidence: JSON.stringify(evidence),
+      },
+    },
+  });
+}
+
+export async function getLaunchroomOverview(
+  email: string,
+  displayName: string,
+): Promise<LaunchroomOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureLaunchroomFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view pilot launch readiness.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [pilot, members, scopes, exercises, rotation, decision, authorizations, validations, drills] =
+    await Promise.all([
+      appwrite.client.request<PilotProgramRecord>(
+        `${base}/${appwriteTables.pilotPrograms}/rows/${pilotRowId(workspace.workspaceId)}`,
+      ),
+      appwrite.client.request<RowList<PilotMemberRecord>>(
+        `${base}/${appwriteTables.pilotMembers}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<ActionScopeRecord>>(
+        `${base}/${appwriteTables.actionScopes}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<PilotExerciseRecord>>(
+        `${base}/${appwriteTables.pilotExercises}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("startedAt"),
+            query.limit(50),
+          ],
+        },
+      ),
+      appwrite.client.request<SupportRotationRecord>(
+        `${base}/${appwriteTables.supportRotations}/rows/${supportRotationRowId(workspace.workspaceId)}`,
+      ),
+      assessLaunch(appwrite, workspace.workspaceId),
+      appwrite.client.request<RowList<ProviderAuthorizationRecord>>(
+        `${base}/${appwriteTables.providerAuthorizations}/rows`,
+        { queries: [query.equal("workspaceId", workspace.workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<ValidationRunRecord>>(
+        `${base}/${appwriteTables.validationRuns}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("startedAt"),
+            query.limit(20),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<RecoveryDrillRecord>>(
+        `${base}/${appwriteTables.recoveryDrills}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("startedAt"),
+            query.limit(20),
+          ],
+        },
+      ),
+    ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    pilot,
+    members: members.rows,
+    scopes: scopes.rows,
+    exercises: exercises.rows,
+    rotation,
+    decision,
+    authorizations: authorizations.rows,
+    validations: validations.rows,
+    drills: drills.rows,
+  };
+}
+
+export async function addPilotParticipant(input: {
+  workspaceId: string;
+  email: string;
+  participantEmail: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const participantEmail = input.participantEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(participantEmail)) {
+    throw new Error("Enter a valid participant email address.");
+  }
+  const now = new Date().toISOString();
+  const key = await sha256(`${input.workspaceId}:${participantEmail}`);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const rowId = `pilotmember_${key.slice(0, 24)}`;
+  await createIfMissing(appwrite, `${base}/${appwriteTables.pilotMembers}/rows`, {
+    rowId,
+    data: {
+      workspaceId: input.workspaceId,
+      pilotId: pilotRowId(input.workspaceId),
+      email: participantEmail,
+      role: "participant",
+      status: "proposed",
+      invitationState: "draft_not_sent",
+      consentState: "not_requested",
+      invitedBy: input.email.toLowerCase(),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  const member = await appwrite.client.request<PilotMemberRecord>(
+    `${base}/${appwriteTables.pilotMembers}/rows/${rowId}`,
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "pilot.participant.drafted",
+    targetType: "pilot_member",
+    targetId: rowId,
+    metadata: { externalInvitationSent: false, consentRecorded: false },
+  });
+  return member;
+}
+
+export async function proposeSupportBackup(input: {
+  workspaceId: string;
+  email: string;
+  backupEmail: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const backupEmail = input.backupEmail.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(backupEmail)) {
+    throw new Error("Enter a valid backup email address.");
+  }
+  const path =
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.supportRotations}/rows/${supportRotationRowId(input.workspaceId)}`;
+  const rotation = await appwrite.client.request<SupportRotationRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        status: "awaiting_backup_acknowledgement",
+        secondaryEmail: backupEmail,
+        escalationPolicy: JSON.stringify({
+          acknowledgementMinutes: 15,
+          escalationMinutes: 30,
+          severityOneChannel: "not_connected",
+          backupAcknowledged: false,
+        }),
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "pilot.support_backup.proposed",
+    targetType: "support_rotation",
+    targetId: rotation.$id,
+    metadata: { externalNotificationSent: false, backupAcknowledged: false },
+  });
+  return rotation;
+}
+
+export async function runPilotExercise(input: {
+  workspaceId: string;
+  scopeId: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureLaunchroomFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "agents.run")) {
+    throw new Error("You do not have permission to run pilot exercises.");
+  }
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({
+          workspaceId: input.workspaceId,
+          pilotId: pilotRowId(input.workspaceId),
+          scopeId: input.scopeId,
+        }),
+        async: false,
+        path: "/pilot/exercise",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: { exercise?: PilotExerciseRecord; error?: string } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Pilot exercise returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.exercise
+  ) {
+    throw new Error(response?.error || execution.errors || "Pilot exercise failed.");
+  }
+  return response.exercise;
+}
+
+export async function refreshLaunchAssessment(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const decision = await assessLaunch(appwrite, input.workspaceId);
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "pilot.launch_evidence.refreshed",
+    targetType: "launch_decision",
+    targetId: decision.$id,
+    metadata: { recommendation: decision.recommendation, score: decision.score },
+  });
+  return decision;
+}
+
+export async function recordLaunchDecision(input: {
+  workspaceId: string;
+  email: string;
+  decision: "hold" | "go";
+  rationale: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const assessed = await assessLaunch(appwrite, input.workspaceId);
+  const blockers = JSON.parse(assessed.blockers || "[]") as string[];
+  if (input.decision === "go" && (assessed.recommendation !== "ready" || blockers.length)) {
+    throw new Error("A go decision cannot be recorded while launch blockers remain.");
+  }
+  const now = new Date().toISOString();
+  const path =
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.launchDecisions}/rows/${launchDecisionRowId(input.workspaceId)}`;
+  const decision = await appwrite.client.request<LaunchDecisionRecord>(path, {
+    method: "PATCH",
+    body: {
+      data: {
+        status: "decision_recorded",
+        recommendation: input.decision === "go" ? "ready" : "hold",
+        decidedBy: input.email.toLowerCase(),
+        decisionRationale: input.rationale.trim().slice(0, 2000),
+        decidedAt: now,
+      },
+    },
+  });
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `pilot.launch_decision.${input.decision}`,
+    targetType: "launch_decision",
+    targetId: decision.$id,
+    metadata: {
+      score: decision.score,
+      blockers: blockers.length,
+      externalLaunchPerformed: false,
+    },
+  });
+  return decision;
 }

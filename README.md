@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes twenty-four TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes twenty-nine TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,13 +62,13 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 7 adds the Production Operations Center. It provides honest provider
-authorization preparation, Appwrite Function-backed worker leases, idempotent
-usage metering, durable validation evidence, recovery tabletop records, and a
-measurable controlled-pilot checklist. Provider access is never marked
-authorized without a real handshake, and tabletop recovery never claims that
-data was restored.
+Phase 8 adds **Launchroom**, the Pilot & GA Command Center. It durably tracks
+pilot membership and consent truth, predefined production action envelopes,
+Function-backed exercises, support coverage, launch evidence, and owner-recorded
+go/hold decisions. External invitations, provider actions, backup
+acknowledgements, and recovery restores are never inferred from local records.
+A go decision is rejected while any launch blocker remains.
 
-**Next phase:** Live pilot and GA readiness — authorize the first real
-providers, onboard pilot users, exercise limited production actions, establish
-support rotations, and make an evidence-based launch decision.
+**Next phase:** Phase 9 — General Availability & Scale Operations: verified
+provider executors, real pilot telemetry, incident response exercises, billing
+controls, customer support workflows, and measured SLO-based expansion.
