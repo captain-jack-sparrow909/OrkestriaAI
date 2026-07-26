@@ -41,6 +41,13 @@ export const appwriteTables = {
   serviceHealthUpdates: "service_health_updates",
   complianceAutomations: "compliance_automations",
   regionalRolloutGates: "regional_rollout_gates",
+  feedbackCycles: "feedback_cycles",
+  tenantEvaluations: "tenant_evaluations",
+  autonomyProfiles: "autonomy_profiles",
+  workloadForecasts: "workload_forecasts",
+  customerOutcomes: "customer_outcomes",
+  policyRecommendations: "policy_recommendations",
+  autonomyDecisions: "autonomy_decisions",
 } as const;
 
 export type AppwriteServerConfig = {

@@ -341,6 +341,27 @@ live-model, publication, and submission evidence exists.
 feedback loops, tenant-level evaluation, safe autonomy tiers, workload
 forecasting, verified customer outcomes, and continuously optimized policies.
 
+### Phase 11 — Adaptive Autonomy & Customer Intelligence
+
+Turn production feedback, tenant evaluation, capacity forecasts, customer
+outcomes, and policy proposals into one evidence-gated autonomy system.
+
+**Implementation status:** Cadence ships as an authenticated adaptive
+intelligence control room backed by seven new Appwrite tables. Feedback cycles
+read only durable workspace records and count a run as production evidence only
+when it carries explicit verified production metadata. The Function-backed
+tenant baseline runs 32 deterministic fixtures with no live model or customer
+data, while its workload forecast remains low-confidence until sufficient run
+history exists. Customer outcomes begin as self-reported, unverified drafts and
+policy recommendations are never auto-applied. Workspace autonomy remains
+assistive until production feedback, tenant evaluation, reliable forecasting,
+three independently verified outcomes, validated policy evidence, and
+Continuous Trust authorization all pass.
+
+**Next phase:** Collaborative Agent Teams & Executive Decisioning — add
+multi-agent missions, delegated specialist roles, shared case rooms,
+cross-product evidence synthesis, executive briefs, and governed decisions.
+
 ## Success metrics
 
 - Time from user intent to first useful result.

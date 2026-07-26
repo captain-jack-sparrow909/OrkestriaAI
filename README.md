@@ -37,7 +37,7 @@ connect.
 
 ## Appwrite foundation
 
-The foundation is declared in `appwrite/schema.mjs` and includes forty-two TablesDB
+The foundation is declared in `appwrite/schema.mjs` and includes forty-nine TablesDB
 tables, three private Storage buckets, and the `orchestrator` Function.
 
 After adding an Appwrite project endpoint, project ID, and scoped server API key:
@@ -62,15 +62,14 @@ The function accepts `DEEPSEEK_API_KEY` or the legacy local spelling
 
 ## Current phase
 
-Phase 10 adds **TrustGrid**, the Continuous Trust & Global Expansion control
-plane. It durably tracks regional deployment cells, provider routes, regional
-failover evidence, deterministic and live-model evaluations, service-health
-communications, compliance automation, and regional rollout decisions.
-Configuration is never presented as deployment, table-tops are never presented
-as real traffic failover or restored data, and drafts or previews are never
-presented as external publications or submissions.
+Phase 11 adds **Cadence**, the Adaptive Autonomy & Customer Intelligence
+control room. It durably tracks production feedback cycles, tenant-level
+evaluation, autonomy profiles, workload forecasts, customer outcome evidence,
+policy recommendations, and autonomy decisions. Synthetic baselines are never
+presented as production quality, self-reported outcomes remain unverified,
+policy recommendations remain draft-only, and autonomy cannot be promoted
+while tenant-specific evidence blockers remain.
 
-**Next phase:** Phase 11 — Adaptive Autonomy & Customer Intelligence:
-production feedback loops, tenant-level evaluation, safe autonomy tiers,
-workload forecasting, verified customer outcomes, and continuously optimized
-policies.
+**Next phase:** Phase 12 — Collaborative Agent Teams & Executive Decisioning:
+multi-agent missions, delegated specialist roles, shared case rooms,
+cross-product evidence synthesis, and governed executive decisions.

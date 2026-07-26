@@ -107,7 +107,7 @@ test("switches to native Appwrite authentication on Appwrite Sites", async () =>
 });
 
 test("protects the command center behind authenticated identity", async () => {
-  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust"]) {
+  for (const path of ["/dashboard", "/vela", "/loom", "/tempo", "/helio", "/aegis", "/enterprise", "/ecosystem", "/operations", "/pilot", "/scale", "/trust", "/cadence"]) {
     const response = await render(path);
     assert.ok([302, 303, 307, 308].includes(response.status));
     assert.match(
@@ -343,7 +343,42 @@ test("ships the Phase 10 TrustGrid with truthful continuous trust and rollout ga
   assert.match(schema, /id: "service_health_updates"/);
   assert.match(schema, /id: "compliance_automations"/);
   assert.match(schema, /id: "regional_rollout_gates"/);
-  assert.match(chrome, /Phase 10 live/);
+  assert.match(chrome, /Phase 11 live/);
+});
+
+test("ships Phase 11 Cadence with evidence-gated adaptive autonomy", async () => {
+  const [cadence, route, repository, orchestrator, schema, chrome] = await Promise.all([
+    readFile(new URL("../app/cadence/CadenceControlRoom.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/cadence/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/platform/repository.ts", import.meta.url), "utf8"),
+    readFile(new URL("../functions/orchestrator/src/main.js", import.meta.url), "utf8"),
+    readFile(new URL("../appwrite/schema.mjs", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/WorkspaceChrome.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(cadence, /Learn the rhythm/);
+  assert.match(cadence, /Capture feedback cycle/);
+  assert.match(cadence, /Run tenant baseline/);
+  assert.match(cadence, /Record outcome draft/);
+  assert.match(cadence, /Draft policy proposal/);
+  assert.match(cadence, /Promote to bounded/);
+  assert.match(route, /record_outcome/);
+  assert.match(route, /record_decision/);
+  assert.match(repository, /self_reported_unverified/);
+  assert.match(repository, /Autonomy cannot be promoted while evidence blockers remain/);
+  assert.match(repository, /autoApplied: 0/);
+  assert.match(orchestrator, /path === "\/intelligence\/evaluate"/);
+  assert.match(orchestrator, /synthetic_workspace_baseline/);
+  assert.match(orchestrator, /liveModelCalled: 0/);
+  assert.match(orchestrator, /customerDataUsed: 0/);
+  assert.match(schema, /id: "feedback_cycles"/);
+  assert.match(schema, /id: "tenant_evaluations"/);
+  assert.match(schema, /id: "autonomy_profiles"/);
+  assert.match(schema, /id: "workload_forecasts"/);
+  assert.match(schema, /id: "customer_outcomes"/);
+  assert.match(schema, /id: "policy_recommendations"/);
+  assert.match(schema, /id: "autonomy_decisions"/);
+  assert.match(chrome, /Phase 11 live/);
 });
 
 test("keeps production metadata and the Appwrite blueprint aligned", async () => {

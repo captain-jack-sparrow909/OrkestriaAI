@@ -57,6 +57,13 @@ test("declares unique Appwrite foundation resources", () => {
       "service_health_updates",
       "compliance_automations",
       "regional_rollout_gates",
+      "feedback_cycles",
+      "tenant_evaluations",
+      "autonomy_profiles",
+      "workload_forecasts",
+      "customer_outcomes",
+      "policy_recommendations",
+      "autonomy_decisions",
     ],
   );
   assert.equal(new Set(tables.map((table) => table.id)).size, tables.length);
@@ -100,6 +107,13 @@ test("keeps every queried field indexed", () => {
   const serviceHealthUpdates = tables.find((table) => table.id === "service_health_updates");
   const complianceAutomations = tables.find((table) => table.id === "compliance_automations");
   const regionalRolloutGates = tables.find((table) => table.id === "regional_rollout_gates");
+  const feedbackCycles = tables.find((table) => table.id === "feedback_cycles");
+  const tenantEvaluations = tables.find((table) => table.id === "tenant_evaluations");
+  const autonomyProfiles = tables.find((table) => table.id === "autonomy_profiles");
+  const workloadForecasts = tables.find((table) => table.id === "workload_forecasts");
+  const customerOutcomes = tables.find((table) => table.id === "customer_outcomes");
+  const policyRecommendations = tables.find((table) => table.id === "policy_recommendations");
+  const autonomyDecisions = tables.find((table) => table.id === "autonomy_decisions");
 
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("userId")));
   assert.ok(memberships.indexes.some((index) => index.attributes.includes("workspaceId")));
@@ -137,6 +151,13 @@ test("keeps every queried field indexed", () => {
   assert.ok(serviceHealthUpdates.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(complianceAutomations.indexes.some((index) => index.attributes.includes("createdAt")));
   assert.ok(regionalRolloutGates.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(feedbackCycles.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(tenantEvaluations.indexes.some((index) => index.attributes.includes("startedAt")));
+  assert.ok(autonomyProfiles.indexes.some((index) => index.key === "workspace_unique"));
+  assert.ok(workloadForecasts.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(customerOutcomes.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(policyRecommendations.indexes.some((index) => index.attributes.includes("createdAt")));
+  assert.ok(autonomyDecisions.indexes.some((index) => index.attributes.includes("createdAt")));
 });
 
 test("enforces approval and execution roles", () => {

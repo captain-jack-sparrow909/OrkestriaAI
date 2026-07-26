@@ -19,6 +19,7 @@ import {
   type ActionScopeRecord,
   type ExecutorRegistryRecord,
   type EvaluationRunRecord,
+  type FeedbackCycleRecord,
   type FailoverDrillRecord,
   type IncidentExerciseRecord,
   type JobRecord,
@@ -45,6 +46,13 @@ import {
   type SupportRotationRecord,
   type TelemetryRollupRecord,
   type TrustGridOverview,
+  type TenantEvaluationRecord,
+  type AutonomyProfileRecord,
+  type WorkloadForecastRecord,
+  type CustomerOutcomeRecord,
+  type PolicyRecommendationRecord,
+  type AutonomyDecisionRecord,
+  type CadenceOverview,
   type UsageLedgerRecord,
   type ValidationRunRecord,
 } from "./model";
@@ -3600,4 +3608,605 @@ export async function recordRegionalDecision(input: {
     },
   });
   return gate;
+}
+
+function autonomyProfileRowId(workspaceId: string) {
+  return enterpriseRowId("autonomy", workspaceId);
+}
+
+async function ensureCadenceFoundation(email: string, displayName: string) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureTrustFoundation(email, displayName);
+  if (!workspace) return null;
+  const now = new Date().toISOString();
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  await createIfMissing(appwrite, `${base}/${appwriteTables.autonomyProfiles}/rows`, {
+    rowId: autonomyProfileRowId(workspace.workspaceId),
+    data: {
+      workspaceId: workspace.workspaceId,
+      currentTier: "assistive",
+      recommendedTier: "assistive",
+      status: "hold",
+      maxActionRisk: "none",
+      autoExecuteEnabled: 0,
+      score: 0,
+      evidence: JSON.stringify({
+        productionFeedbackVerified: false,
+        tenantEvaluationPassed: false,
+        workloadForecastReliable: false,
+        customerOutcomesVerified: false,
+        policyOptimizationValidated: false,
+        continuousTrustAuthorized: false,
+      }),
+      blockers: JSON.stringify([
+        "Production feedback has not been verified.",
+        "Tenant-level production evaluation has not passed.",
+        "Workload history is insufficient for a reliable forecast.",
+        "Three independently verified customer outcomes are required.",
+        "No adaptive policy has completed validation.",
+        "Continuous Trust has not authorized production expansion.",
+      ]),
+      createdAt: now,
+      updatedAt: now,
+    },
+    permissions: [],
+  });
+  await appwrite.client.request(
+    `${base}/${appwriteTables.workspaces}/rows/${workspace.workspaceId}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          plan: "enterprise",
+          settings: JSON.stringify({
+            phase: 11,
+            agents: ["vela", "loom", "tempo", "helio", "aegis"],
+            governance: true,
+            ecosystem: true,
+            productionOperations: true,
+            pilotLaunchroom: true,
+            scaleOperations: true,
+            continuousTrust: true,
+            adaptiveAutonomy: true,
+          }),
+        },
+      },
+    },
+  );
+  return workspace;
+}
+
+async function assessAutonomyProfile(
+  appwrite: NonNullable<ReturnType<typeof getClient>>,
+  workspaceId: string,
+) {
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [feedback, evaluations, forecasts, outcomes, policies, trustGate] =
+    await Promise.all([
+      appwrite.client.request<RowList<FeedbackCycleRecord>>(
+        `${base}/${appwriteTables.feedbackCycles}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<TenantEvaluationRecord>>(
+        `${base}/${appwriteTables.tenantEvaluations}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<WorkloadForecastRecord>>(
+        `${base}/${appwriteTables.workloadForecasts}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<CustomerOutcomeRecord>>(
+        `${base}/${appwriteTables.customerOutcomes}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RowList<PolicyRecommendationRecord>>(
+        `${base}/${appwriteTables.policyRecommendations}/rows`,
+        { queries: [query.equal("workspaceId", workspaceId), query.limit(100)] },
+      ),
+      appwrite.client.request<RegionalRolloutGateRecord>(
+        `${base}/${appwriteTables.regionalRolloutGates}/rows/${regionalGateRowId(workspaceId)}`,
+      ),
+    ]);
+  const evidence = {
+    productionFeedbackVerified: feedback.rows.some(
+      (cycle) =>
+        cycle.status === "complete_verified" &&
+        cycle.productionSignals >= 20 &&
+        cycle.verifiedSignals >= 10,
+    ),
+    tenantEvaluationPassed: evaluations.rows.some(
+      (evaluation) =>
+        evaluation.status === "passed_production" &&
+        evaluation.scope === "production_opt_in" &&
+        evaluation.score >= 95,
+    ),
+    workloadForecastReliable: forecasts.rows.some(
+      (forecast) =>
+        forecast.dataQuality === "observed" &&
+        forecast.observedRuns >= 50 &&
+        forecast.confidenceBps >= 7000,
+    ),
+    customerOutcomesVerified:
+      outcomes.rows.filter(
+        (outcome) => outcome.verified === 1 && outcome.externalVerified === 1,
+      ).length >= 3,
+    policyOptimizationValidated: policies.rows.some(
+      (policy) =>
+        policy.status === "validated" &&
+        policy.autoApplied === 0 &&
+        policy.confidenceBps >= 8000,
+    ),
+    continuousTrustAuthorized:
+      trustGate.recommendation === "expand" && trustGate.rolloutAuthorized === 1,
+  };
+  const blockerMap: Record<keyof typeof evidence, string> = {
+    productionFeedbackVerified: "Production feedback has not been verified.",
+    tenantEvaluationPassed: "Tenant-level production evaluation has not passed.",
+    workloadForecastReliable: "Workload history is insufficient for a reliable forecast.",
+    customerOutcomesVerified: "Three independently verified customer outcomes are required.",
+    policyOptimizationValidated: "No adaptive policy has completed validation.",
+    continuousTrustAuthorized: "Continuous Trust has not authorized production expansion.",
+  };
+  const blockers = (Object.keys(evidence) as Array<keyof typeof evidence>)
+    .filter((key) => !evidence[key])
+    .map((key) => blockerMap[key]);
+  const passed = Object.values(evidence).filter(Boolean).length;
+  const score = Math.round((passed / Object.keys(evidence).length) * 100);
+  const recommendation = blockers.length === 0 ? "bounded" : "assistive";
+  return appwrite.client.request<AutonomyProfileRecord>(
+    `${base}/${appwriteTables.autonomyProfiles}/rows/${autonomyProfileRowId(workspaceId)}`,
+    {
+      method: "PATCH",
+      body: {
+        data: {
+          recommendedTier: recommendation,
+          status: blockers.length === 0 ? "eligible_for_review" : "hold",
+          score,
+          evidence: JSON.stringify(evidence),
+          blockers: JSON.stringify(blockers),
+          updatedAt: new Date().toISOString(),
+        },
+      },
+    },
+  );
+}
+
+export async function getCadenceOverview(
+  email: string,
+  displayName: string,
+): Promise<CadenceOverview | null> {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureCadenceFoundation(email, displayName);
+  if (!workspace) return null;
+  const membership = await findMembership(workspace.workspaceId, email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to view adaptive intelligence.");
+  }
+  const profile = await assessAutonomyProfile(appwrite, workspace.workspaceId);
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const queries = [
+    query.equal("workspaceId", workspace.workspaceId),
+    query.orderDesc("createdAt"),
+    query.limit(25),
+  ];
+  const [feedback, evaluations, forecasts, outcomes, policies, decisions, signals] =
+    await Promise.all([
+      appwrite.client.request<RowList<FeedbackCycleRecord>>(
+        `${base}/${appwriteTables.feedbackCycles}/rows`,
+        { queries },
+      ),
+      appwrite.client.request<RowList<TenantEvaluationRecord>>(
+        `${base}/${appwriteTables.tenantEvaluations}/rows`,
+        {
+          queries: [
+            query.equal("workspaceId", workspace.workspaceId),
+            query.orderDesc("startedAt"),
+            query.limit(25),
+          ],
+        },
+      ),
+      appwrite.client.request<RowList<WorkloadForecastRecord>>(
+        `${base}/${appwriteTables.workloadForecasts}/rows`,
+        { queries },
+      ),
+      appwrite.client.request<RowList<CustomerOutcomeRecord>>(
+        `${base}/${appwriteTables.customerOutcomes}/rows`,
+        { queries },
+      ),
+      appwrite.client.request<RowList<PolicyRecommendationRecord>>(
+        `${base}/${appwriteTables.policyRecommendations}/rows`,
+        { queries },
+      ),
+      appwrite.client.request<RowList<AutonomyDecisionRecord>>(
+        `${base}/${appwriteTables.autonomyDecisions}/rows`,
+        { queries },
+      ),
+      appwrite.client.request<RowList<ProductSignalRecord>>(
+        `${base}/${appwriteTables.productSignals}/rows`,
+        { queries },
+      ),
+    ]);
+  return {
+    workspaceId: workspace.workspaceId,
+    feedback: feedback.rows,
+    evaluations: evaluations.rows,
+    profile,
+    forecasts: forecasts.rows,
+    outcomes: outcomes.rows,
+    policies: policies.rows,
+    decisions: decisions.rows,
+    signals: signals.rows,
+  };
+}
+
+export async function captureFeedbackCycle(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to capture feedback.");
+  }
+  const base = `/tablesdb/${appwrite.config.databaseId}/tables`;
+  const [runs, approvals, signals] = await Promise.all([
+    appwrite.client.request<RowList<{ metadata: string; startedAt: string }>>(
+      `${base}/${appwriteTables.runs}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<ApprovalRecord>>(
+      `${base}/${appwriteTables.approvals}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+    appwrite.client.request<RowList<ProductSignalRecord>>(
+      `${base}/${appwriteTables.productSignals}/rows`,
+      { queries: [query.equal("workspaceId", input.workspaceId), query.limit(100)] },
+    ),
+  ]);
+  const productionRuns = runs.rows.filter(
+    (run) => parseRecord(run.metadata).production === true,
+  );
+  const verifiedSignals = productionRuns.filter(
+    (run) => parseRecord(run.metadata).evidenceVerified === true,
+  ).length;
+  const decisions = approvals.rows.filter((approval) =>
+    ["approved", "denied"].includes(approval.state),
+  );
+  const approved = decisions.filter((approval) => approval.state === "approved").length;
+  const decisionMinutes = decisions
+    .filter((approval) => approval.decidedAt)
+    .map((approval) =>
+      Math.max(
+        0,
+        Math.round(
+          (new Date(approval.decidedAt || approval.requestedAt).getTime() -
+            new Date(approval.requestedAt).getTime()) /
+            60_000,
+        ),
+      ),
+    )
+    .sort((a, b) => a - b);
+  const medianApprovalMinutes = decisionMinutes.length
+    ? decisionMinutes[Math.floor(decisionMinutes.length / 2)]
+    : 0;
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - 30 * 86_400_000);
+  const isVerified = productionRuns.length >= 20 && verifiedSignals >= 10;
+  const cycle = await appwrite.client.request<FeedbackCycleRecord>(
+    `${base}/${appwriteTables.feedbackCycles}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          period: now.toISOString().slice(0, 7),
+          status: isVerified ? "complete_verified" : "insufficient_evidence",
+          source: "durable_workspace_records",
+          signalsCount: runs.rows.length + decisions.length + signals.rows.length,
+          productionSignals: productionRuns.length,
+          verifiedSignals,
+          acceptanceRateBps: decisions.length
+            ? Math.round((approved / decisions.length) * 10_000)
+            : 0,
+          medianApprovalMinutes,
+          sampleWindowStart: windowStart.toISOString(),
+          sampleWindowEnd: now.toISOString(),
+          evidence: JSON.stringify({
+            runRows: runs.rows.length,
+            approvalDecisions: decisions.length,
+            productSignals: signals.rows.length,
+            productionOptInRequired: true,
+            externalAnalyticsIngested: false,
+            productionQualityClaimed: isVerified,
+          }),
+          createdAt: now.toISOString(),
+          completedAt: now.toISOString(),
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "intelligence.feedback_cycle.captured",
+    targetType: "feedback_cycle",
+    targetId: cycle.$id,
+    metadata: {
+      status: cycle.status,
+      productionSignals: cycle.productionSignals,
+      externalAnalyticsIngested: false,
+    },
+  });
+  return cycle;
+}
+
+export async function runTenantIntelligenceEvaluation(input: {
+  workspaceId: string;
+  email: string;
+  displayName: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const workspace = await ensureCadenceFoundation(input.email, input.displayName);
+  if (!workspace || workspace.workspaceId !== input.workspaceId) {
+    throw new Error("Workspace identity mismatch.");
+  }
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "agents.run")) {
+    throw new Error("You do not have permission to run tenant evaluations.");
+  }
+  const functionId = process.env.APPWRITE_FUNCTION_ID || "orchestrator";
+  const execution = await appwrite.client.request<FunctionExecution>(
+    `/functions/${functionId}/executions`,
+    {
+      method: "POST",
+      body: {
+        body: JSON.stringify({ workspaceId: input.workspaceId }),
+        async: false,
+        path: "/intelligence/evaluate",
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-orkestria-user-id": workspace.userId,
+        },
+      },
+    },
+  );
+  let response: {
+    evaluation?: TenantEvaluationRecord;
+    forecast?: WorkloadForecastRecord;
+    error?: string;
+  } | null = null;
+  try {
+    response = JSON.parse(execution.responseBody || "null");
+  } catch {
+    throw new Error("Tenant evaluation returned an unreadable response.");
+  }
+  if (
+    execution.status !== "completed" ||
+    execution.responseStatusCode >= 400 ||
+    !response?.evaluation ||
+    !response.forecast
+  ) {
+    throw new Error(response?.error || execution.errors || "Tenant evaluation failed.");
+  }
+  return response;
+}
+
+export async function createPolicyRecommendation(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const profile = await assessAutonomyProfile(appwrite, input.workspaceId);
+  const now = new Date().toISOString();
+  const recommendation = await appwrite.client.request<PolicyRecommendationRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.policyRecommendations}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          title: "Keep consequential actions approval-gated",
+          status: "draft_needs_validation",
+          sourcePolicy: "workspace_default_guardrails",
+          proposedPolicy: JSON.stringify({
+            mode: "observe",
+            preserveApprovalFor: [
+              "purchase",
+              "submission",
+              "production_change",
+              "permission_change",
+              "sensitive_export",
+            ],
+            candidateChange: "Allow read-only enrichment to skip redundant review.",
+            rollbackAvailable: true,
+          }),
+          confidenceBps: Math.min(6500, profile.score * 65),
+          expectedImpact:
+            "Reduce review noise for read-only enrichment without relaxing any consequential-action gate.",
+          autoApplied: 0,
+          evidence: JSON.stringify({
+            profileScore: profile.score,
+            blockers: JSON.parse(profile.blockers || "[]"),
+            productionExperimentRun: false,
+            customerImpactMeasured: false,
+            policyChanged: false,
+          }),
+          createdBy: input.email.toLowerCase(),
+          createdAt: now,
+          updatedAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "intelligence.policy_recommendation.drafted",
+    targetType: "policy_recommendation",
+    targetId: recommendation.$id,
+    metadata: { autoApplied: false, policyChanged: false },
+  });
+  return recommendation;
+}
+
+export async function recordCustomerOutcomeDraft(input: {
+  workspaceId: string;
+  email: string;
+  title: string;
+  metric: string;
+  baselineValue: number;
+  currentValue: number;
+  unit: string;
+  note: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  const membership = await findMembership(input.workspaceId, input.email);
+  if (!membership || !can(membership.role, "audit.read")) {
+    throw new Error("You do not have permission to record customer outcomes.");
+  }
+  const now = new Date().toISOString();
+  const outcome = await appwrite.client.request<CustomerOutcomeRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.customerOutcomes}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          title: input.title.trim().slice(0, 180),
+          metric: input.metric.trim().slice(0, 96),
+          baselineValue: Math.round(input.baselineValue),
+          currentValue: Math.round(input.currentValue),
+          unit: input.unit.trim().slice(0, 32),
+          status: "self_reported_unverified",
+          verified: 0,
+          externalVerified: 0,
+          source: "workspace_user",
+          evidence: JSON.stringify({
+            note: input.note.trim().slice(0, 2000),
+            userSupplied: true,
+            artifactAttached: false,
+            independentlyVerified: false,
+          }),
+          createdBy: input.email.toLowerCase(),
+          createdAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "intelligence.customer_outcome.draft_recorded",
+    targetType: "customer_outcome",
+    targetId: outcome.$id,
+    metadata: { verified: false, externalVerified: false },
+  });
+  return outcome;
+}
+
+export async function refreshAutonomyProfile(input: {
+  workspaceId: string;
+  email: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const profile = await assessAutonomyProfile(appwrite, input.workspaceId);
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: "intelligence.autonomy_evidence.refreshed",
+    targetType: "autonomy_profile",
+    targetId: profile.$id,
+    metadata: { score: profile.score, recommendedTier: profile.recommendedTier },
+  });
+  return profile;
+}
+
+export async function recordAutonomyDecision(input: {
+  workspaceId: string;
+  email: string;
+  decision: "hold" | "promote";
+  rationale: string;
+}) {
+  const appwrite = getClient();
+  if (!appwrite) return null;
+  await requireEnterpriseOwner(input.workspaceId, input.email);
+  const profile = await assessAutonomyProfile(appwrite, input.workspaceId);
+  const blockers = JSON.parse(profile.blockers || "[]") as string[];
+  if (
+    input.decision === "promote" &&
+    (profile.recommendedTier !== "bounded" || blockers.length)
+  ) {
+    throw new Error("Autonomy cannot be promoted while evidence blockers remain.");
+  }
+  const now = new Date().toISOString();
+  const toTier = input.decision === "promote" ? "bounded" : profile.currentTier;
+  const decision = await appwrite.client.request<AutonomyDecisionRecord>(
+    `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.autonomyDecisions}/rows`,
+    {
+      method: "POST",
+      body: {
+        rowId: "unique()",
+        data: {
+          workspaceId: input.workspaceId,
+          profileId: profile.$id,
+          decision: input.decision,
+          fromTier: profile.currentTier,
+          toTier,
+          rationale: input.rationale.trim().slice(0, 2000),
+          evidence: profile.evidence,
+          enacted: input.decision === "promote" ? 1 : 0,
+          externalActionsChanged: 0,
+          decidedBy: input.email.toLowerCase(),
+          createdAt: now,
+        },
+        permissions: [],
+      },
+    },
+  );
+  if (input.decision === "promote") {
+    await appwrite.client.request(
+      `/tablesdb/${appwrite.config.databaseId}/tables/${appwriteTables.autonomyProfiles}/rows/${profile.$id}`,
+      {
+        method: "PATCH",
+        body: {
+          data: {
+            currentTier: "bounded",
+            status: "active_bounded",
+            maxActionRisk: "low",
+            autoExecuteEnabled: 1,
+            updatedAt: now,
+          },
+        },
+      },
+    );
+  }
+  await writeAuditEvent({
+    workspaceId: input.workspaceId,
+    actorEmail: input.email,
+    action: `intelligence.autonomy_decision.${input.decision}`,
+    targetType: "autonomy_decision",
+    targetId: decision.$id,
+    metadata: {
+      fromTier: decision.fromTier,
+      toTier: decision.toTier,
+      externalActionsChanged: false,
+    },
+  });
+  return decision;
 }

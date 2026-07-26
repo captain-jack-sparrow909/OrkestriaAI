@@ -674,6 +674,133 @@ export type TrustGridOverview = {
   gate: RegionalRolloutGateRecord;
 };
 
+export type FeedbackCycleRecord = {
+  $id: string;
+  workspaceId: string;
+  period: string;
+  status: string;
+  source: string;
+  signalsCount: number;
+  productionSignals: number;
+  verifiedSignals: number;
+  acceptanceRateBps: number;
+  medianApprovalMinutes: number;
+  sampleWindowStart: string;
+  sampleWindowEnd: string;
+  evidence: string;
+  createdAt: string;
+  completedAt?: string;
+};
+
+export type TenantEvaluationRecord = {
+  $id: string;
+  workspaceId: string;
+  suite: string;
+  status: string;
+  scope: string;
+  score: number;
+  cases: number;
+  passed: number;
+  failed: number;
+  liveModelCalled: number;
+  customerDataUsed: number;
+  evidence: string;
+  initiatedBy: string;
+  startedAt: string;
+  completedAt?: string;
+};
+
+export type AutonomyProfileRecord = {
+  $id: string;
+  workspaceId: string;
+  currentTier: string;
+  recommendedTier: string;
+  status: string;
+  maxActionRisk: string;
+  autoExecuteEnabled: number;
+  score: number;
+  evidence: string;
+  blockers: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type WorkloadForecastRecord = {
+  $id: string;
+  workspaceId: string;
+  horizonDays: number;
+  status: string;
+  basis: string;
+  observedRuns: number;
+  predictedRuns: number;
+  peakConcurrent: number;
+  confidenceBps: number;
+  dataQuality: string;
+  evidence: string;
+  createdAt: string;
+};
+
+export type CustomerOutcomeRecord = {
+  $id: string;
+  workspaceId: string;
+  title: string;
+  metric: string;
+  baselineValue: number;
+  currentValue: number;
+  unit: string;
+  status: string;
+  verified: number;
+  externalVerified: number;
+  source: string;
+  evidence: string;
+  createdBy: string;
+  createdAt: string;
+  verifiedAt?: string;
+};
+
+export type PolicyRecommendationRecord = {
+  $id: string;
+  workspaceId: string;
+  title: string;
+  status: string;
+  sourcePolicy: string;
+  proposedPolicy: string;
+  confidenceBps: number;
+  expectedImpact: string;
+  autoApplied: number;
+  evidence: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AutonomyDecisionRecord = {
+  $id: string;
+  workspaceId: string;
+  profileId: string;
+  decision: string;
+  fromTier: string;
+  toTier: string;
+  rationale: string;
+  evidence: string;
+  enacted: number;
+  externalActionsChanged: number;
+  decidedBy: string;
+  createdAt: string;
+};
+
+export type CadenceOverview = {
+  workspaceId: string;
+  feedback: FeedbackCycleRecord[];
+  evaluations: TenantEvaluationRecord[];
+  profile: AutonomyProfileRecord;
+  forecasts: WorkloadForecastRecord[];
+  outcomes: CustomerOutcomeRecord[];
+  policies: PolicyRecommendationRecord[];
+  decisions: AutonomyDecisionRecord[];
+  signals: ProductSignalRecord[];
+};
+
 export function can(role: WorkspaceRole, capability: string): boolean {
   return roleCapabilities[role].includes(capability);
 }

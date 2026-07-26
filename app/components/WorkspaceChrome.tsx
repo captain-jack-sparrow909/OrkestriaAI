@@ -18,7 +18,7 @@ export function WorkspaceChrome({
   children,
 }: {
   user: ChatGPTUser;
-  active: "overview" | "vela" | "loom" | "tempo" | "helio" | "aegis" | "enterprise" | "ecosystem" | "operations" | "pilot" | "scale" | "trust";
+  active: "overview" | "vela" | "loom" | "tempo" | "helio" | "aegis" | "enterprise" | "ecosystem" | "operations" | "pilot" | "scale" | "trust" | "cadence";
   title: string;
   children: ReactNode;
 }) {
@@ -66,6 +66,9 @@ export function WorkspaceChrome({
           <Link className={active === "trust" ? "active" : ""} href="/trust">
             <i className="trust-nav-mark">◎</i><span>TrustGrid</span>
           </Link>
+          <Link className={active === "cadence" ? "active" : ""} href="/cadence">
+            <i className="cadence-nav-mark">∿</i><span>Cadence</span>
+          </Link>
           <span className="app-nav-label">Agents</span>
           {agents.map((agent) => agent.live ? (
             <Link
@@ -99,7 +102,7 @@ export function WorkspaceChrome({
             <strong>{title}</strong>
           </div>
           <div className="topbar-actions">
-            <span className="phase-live"><i />Phase 10 live</span>
+            <span className="phase-live"><i />Phase 11 live</span>
             <div className="user-chip">
               <span>{initials}</span>
               <p><strong>{user.displayName}</strong><small>Owner</small></p>
